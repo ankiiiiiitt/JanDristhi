@@ -36,7 +36,10 @@ import {
   Check,
   UploadCloud,
   RotateCcw,
-  Loader2
+  Loader2,
+  X,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import RoadMap from './RoadMap';
 import { uploadObservation } from '../services/api';
@@ -80,8 +83,8 @@ export default function UserMobileApp({
   // User App Tabs: 'home' | 'map' | 'record' | 'reports' | 'profile'
   const [userTab, setUserTab] = useState('home');
 
-  // Live Recording state
-  const [recordMode, setRecordMode] = useState('video'); // 'video' | 'photo'
+  // Live Recording state (defaults to 'photo' for instant field hazard inspection)
+  const [recordMode, setRecordMode] = useState('photo'); // 'photo' | 'video'
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingSaved, setRecordingSaved] = useState(false);
@@ -113,20 +116,11 @@ export default function UserMobileApp({
   // Real Captured Photo Blob and Preview for direct posting
   const [capturedBlob, setCapturedBlob] = useState(null);
   const [capturedPreview, setCapturedPreview] = useState(null);
+  const [lockedCoords, setLockedCoords] = useState(null);
+  const [captureTimestamp, setCaptureTimestamp] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
   const fileInputRef = useRef(null);
-
-  // File picker handler for real mobile images
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const preview = URL.createObjectURL(file);
-    setCapturedBlob(file);
-    setCapturedPreview(preview);
-    setPhotoCaptured(true);
-    setRecordingSaved(false);
-    setUploadSuccessData(null);
-    setUploadError(null);
-  };
 
   // Auto-acquire real device GPS on mount
   useEffect(() => {
@@ -163,51 +157,227 @@ export default function UserMobileApp({
     }
   }, []);
 
-  const toggleRecording = async () => {
-    if (recordMode === 'photo') {
-      setPhotoFlash(true);
-      setTimeout(() => setPhotoFlash(false), 250);
+  // ── REAR CAMERA & STREAM LIFECYCLE ──
+  const startRearCamera = async () => {
+    setIsCameraStarting(true);
+    setCameraError(null);
+    try {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+      }
 
-      // If live camera stream is available, snapshot frame from canvas
-      if (userVideoRef.current && cameraStream) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API is not supported on this browser or requires HTTPS.');
+      }
+
+      let stream = null;
+      // 1. Request environment rear camera with ideal resolution for Android Chrome / iOS
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 }
+          },
+          audio: false
+        });
+      } catch (err1) {
+        console.warn('Initial ideal rear camera constraint failed, retrying fallback:', err1);
         try {
-          const video = userVideoRef.current;
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth || 640;
-          canvas.height = video.videoHeight || 480;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-          setCapturedPreview(dataUrl);
-          canvas.toBlob((blob) => {
-            setCapturedBlob(blob);
-          }, 'image/jpeg', 0.88);
-          setPhotoCaptured(true);
-          setRecordingSaved(false);
-          setUploadSuccessData(null);
-          setUploadError(null);
-          return;
-        } catch (e) {
-          console.warn('Canvas capture fallback:', e);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+          });
+        } catch (err2) {
+          console.warn('Exact environment failed, using default camera:', err2);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
         }
       }
 
-      // If no live stream, open phone camera / gallery picker
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      } else {
-        setPhotoCaptured(true);
+      setCameraStream(stream);
+      if (userVideoRef.current) {
+        userVideoRef.current.srcObject = stream;
+        userVideoRef.current.onloadedmetadata = () => {
+          userVideoRef.current?.play().catch(e => console.warn('Video play catch:', e));
+        };
       }
+    } catch (err) {
+      console.warn('startRearCamera error:', err);
+      setCameraError(err.message || 'Camera permission denied or camera not found');
+    } finally {
+      setIsCameraStarting(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+    if (userVideoRef.current) {
+      userVideoRef.current.srcObject = null;
+    }
+  };
+
+  // Open rear camera when on record tab and no captured preview
+  useEffect(() => {
+    if (userTab === 'record' && !capturedPreview) {
+      startRearCamera();
+    } else if (userTab !== 'record') {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [userTab, capturedPreview]);
+
+  // Keep video source attached
+  useEffect(() => {
+    if (userVideoRef.current && cameraStream && !capturedPreview) {
+      userVideoRef.current.srcObject = cameraStream;
+      userVideoRef.current.play().catch(() => {});
+    }
+  }, [cameraStream, userTab, capturedPreview]);
+
+  // Capture Photo Snapshot
+  const handleCapturePhoto = () => {
+    setPhotoFlash(true);
+    setTimeout(() => setPhotoFlash(false), 200);
+
+    // Freeze exact GPS & timestamp at capture time
+    const timestamp = new Date().toISOString();
+    setCaptureTimestamp(timestamp);
+    setLockedCoords({
+      lat: userCoords.lat,
+      lng: userCoords.lng,
+      accuracy: userCoords.accuracy,
+      city: userCoords.city,
+      isReal: userCoords.isReal
+    });
+
+    // 1. Grab frame from live video feed
+    if (userVideoRef.current && userVideoRef.current.videoWidth > 0) {
+      try {
+        const video = userVideoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        setCapturedPreview(dataUrl);
+
+        canvas.toBlob((blob) => {
+          setCapturedBlob(blob);
+        }, 'image/jpeg', 0.92);
+
+        setPhotoCaptured(true);
+        setRecordingSaved(false);
+        setUploadSuccessData(null);
+        setUploadError(null);
+        stopCamera();
+        return;
+      } catch (err) {
+        console.warn('Canvas capture error:', err);
+      }
+    }
+
+    // 2. Fallback to native camera input dialog
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleRetake = () => {
+    setCapturedBlob(null);
+    setCapturedPreview(null);
+    setLockedCoords(null);
+    setCaptureTimestamp(null);
+    setPhotoCaptured(false);
+    setRecordingSaved(false);
+    setRecordingSeconds(0);
+    setIsRecording(false);
+    setUploadSuccessData(null);
+    setUploadError(null);
+    startRearCamera();
+  };
+
+  const handleCancel = () => {
+    setCapturedBlob(null);
+    setCapturedPreview(null);
+    setLockedCoords(null);
+    setCaptureTimestamp(null);
+    setPhotoCaptured(false);
+    setRecordingSaved(false);
+    setRecordingSeconds(0);
+    setIsRecording(false);
+    setUploadSuccessData(null);
+    setUploadError(null);
+    startRearCamera();
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    const nowIso = new Date().toISOString();
+    setCaptureTimestamp(nowIso);
+    setLockedCoords({
+      lat: userCoords.lat,
+      lng: userCoords.lng,
+      accuracy: userCoords.accuracy,
+      city: userCoords.city,
+      isReal: userCoords.isReal
+    });
+    setCapturedBlob(file);
+    setCapturedPreview(preview);
+    setPhotoCaptured(true);
+    setRecordingSaved(false);
+    setUploadSuccessData(null);
+    setUploadError(null);
+    stopCamera();
+  };
+
+  const toggleRecording = async () => {
+    if (recordMode === 'photo') {
+      handleCapturePhoto();
       return;
     }
 
     if (isRecording) {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        setCameraStream(null);
+      // Capture the current frame from live video
+      if (userVideoRef.current && (userVideoRef.current.videoWidth > 0 || userVideoRef.current.readyState >= 2)) {
+        try {
+          const video = userVideoRef.current;
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 1280;
+          canvas.height = video.videoHeight || 720;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          setCapturedPreview(dataUrl);
+          canvas.toBlob((blob) => setCapturedBlob(blob), 'image/jpeg', 0.92);
+        } catch (e) {
+          console.warn('Video frame capture error:', e);
+        }
       }
+      stopCamera();
       setIsRecording(false);
       setRecordingSaved(true);
+      setPhotoCaptured(true);
+      const timestamp = new Date().toISOString();
+      setCaptureTimestamp(timestamp);
+      setLockedCoords({
+        lat: userCoords.lat,
+        lng: userCoords.lng,
+        accuracy: userCoords.accuracy,
+        city: userCoords.city,
+        isReal: userCoords.isReal
+      });
       setUploadSuccessData(null);
       setUploadError(null);
       return;
@@ -217,24 +387,12 @@ export default function UserMobileApp({
     setRecordingSeconds(0);
     setRecordingSaved(false);
     setPhotoCaptured(false);
+    setCapturedBlob(null);
+    setCapturedPreview(null);
     setUploadSuccessData(null);
     setUploadError(null);
     setIsRecording(true);
-
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        });
-        setCameraStream(stream);
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-        }
-      }
-    } catch (e) {
-      console.warn("Camera access failed or unavailable in browser:", e);
-    }
+    startRearCamera();
   };
 
   const handleQuickUpload = async () => {
@@ -249,9 +407,12 @@ export default function UserMobileApp({
       }
       formData.append('file', blobToUpload, 'road_hazard_recording.jpg');
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB');
-      const finalLat = userCoords.lat ? userCoords.lat.toFixed(5) : '30.7450';
-      const finalLng = userCoords.lng ? userCoords.lng.toFixed(5) : '76.7760';
-      const finalSector = userCoords.isReal ? (userCoords.city || 'My Location') : 'Sector 17';
+
+      const activeCoords = lockedCoords || userCoords;
+      const finalLat = (activeCoords.lat || 30.7450).toFixed(5);
+      const finalLng = (activeCoords.lng || 76.7760).toFixed(5);
+      const finalSector = activeCoords.city || 'Field Location';
+      const exactTime = captureTimestamp || new Date().toISOString();
 
       formData.append('latitude', finalLat);
       formData.append('longitude', finalLng);
@@ -266,7 +427,6 @@ export default function UserMobileApp({
         console.warn('Backend upload returned error or timeout, saving locally:', err);
       }
 
-      const nowIso = new Date().toISOString();
       const generatedObsId = res?.data?.observation_id || `OBS-MOB-${Date.now().toString().slice(-6)}`;
       const enrichedObs = {
         observation_id: generatedObsId,
@@ -285,8 +445,8 @@ export default function UserMobileApp({
           { class_id: 'D00', class_name: 'Pothole', severity: 'critical', confidence: 0.94 }
         ],
         telemetry_z_shock: 3.1,
-        captured_at: nowIso,
-        created_at: nowIso
+        captured_at: exactTime,
+        created_at: exactTime
       };
 
       setUploadSuccessData(enrichedObs);
@@ -311,7 +471,14 @@ export default function UserMobileApp({
     let interval = null;
     if (isRecording) {
       interval = setInterval(() => {
-        setRecordingSeconds(prev => prev + 1);
+        setRecordingSeconds(prev => {
+          if (prev >= 30) {
+            // Auto-stop after 30 seconds max to prevent stuck recordings
+            setTimeout(() => toggleRecording(), 0);
+            return 30;
+          }
+          return prev + 1;
+        });
       }, 1000);
     }
     return () => {
@@ -343,24 +510,6 @@ export default function UserMobileApp({
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col items-center justify-start p-0 sm:py-6 sm:px-4">
-      {/* Top Banner to switch to Developer Dashboard (ONLY accessible by Engineer/Developer role) */}
-      {onSwitchToDeveloper && currentUser?.role === 'developer' && (
-        <div className="w-full max-w-md bg-[#0c1427] border-b sm:border border-slate-800 sm:rounded-2xl p-2.5 mb-2 sm:mb-4 flex items-center justify-between shadow-xl z-30">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold text-white">Citizen Field Mobile Preview</span>
-          </div>
-
-          <button
-            onClick={onSwitchToDeveloper}
-            className="text-xs px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center space-x-1.5 shadow-md shadow-purple-600/30 transition-transform active:scale-95"
-          >
-            <span>Back to Engineer Studio</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* ── PHONE SHELL CONTAINER ── */}
       <div className="w-full max-w-md bg-[#0b1120] sm:border-4 sm:border-slate-800 sm:rounded-[40px] shadow-2xl flex flex-col min-h-screen sm:min-h-[780px] sm:max-h-[850px] relative overflow-hidden ring-1 ring-slate-700/50">
         {/* Status Bar */}
@@ -687,260 +836,321 @@ export default function UserMobileApp({
                     </button>
                   </div>
 
+                  {/* VIEW FINDER / PHOTO PREVIEW CONTAINER */}
                   <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-black h-72 flex items-center justify-center shadow-2xl">
                     {photoFlash && (
-                      <div className="absolute inset-0 bg-white/90 z-20 transition-opacity duration-300 pointer-events-none animate-ping" />
+                      <div className="absolute inset-0 bg-white/90 z-30 transition-opacity duration-300 pointer-events-none animate-ping" />
                     )}
+
                     {capturedPreview ? (
-                      <img src={capturedPreview} alt="Captured Road Hazard" className="w-full h-full object-cover" />
+                      /* 1. Captured Photo Preview */
+                      <>
+                        <img
+                          src={capturedPreview}
+                          alt="Captured Road Hazard"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-emerald-500/95 text-slate-950 text-[10px] font-black flex items-center space-x-1 shadow-lg backdrop-blur z-20">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Photo Captured • Ready to Review</span>
+                        </div>
+                      </>
                     ) : cameraStream ? (
-                      <video ref={userVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    ) : (
-                      <img src="/images/roads/road_pothole_d00.jpg" alt="Road Surface" className="w-full h-full object-cover" />
-                    )}
+                      /* 2. Live Rear Camera Feed */
+                      <>
+                        <video
+                          ref={(el) => {
+                            userVideoRef.current = el;
+                            if (el && cameraStream && el.srcObject !== cameraStream) {
+                              el.srcObject = cameraStream;
+                              el.play().catch(e => console.warn('Video play error:', e));
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Live HUD Overlays */}
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 border border-emerald-500/40 text-emerald-400 text-[10px] font-bold flex items-center space-x-1.5 backdrop-blur z-20">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>LIVE REAR CAMERA</span>
+                        </div>
 
-                    <div className="absolute top-[45%] left-[25%] w-[45%] h-[32%] border-2 border-rose-500 bg-rose-500/20 rounded-lg flex flex-col justify-start p-1 pointer-events-none">
-                      <span className="text-[9px] font-black bg-rose-600 text-white px-1.5 py-0.5 rounded w-max">
-                        Pothole 0.87
-                      </span>
-                    </div>
+                        {/* Framing Reticle */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                          <div className="w-48 h-36 border border-white/20 rounded-2xl flex items-center justify-center relative">
+                            <div className="w-3 h-3 border-t-2 border-l-2 border-emerald-400 absolute -top-0.5 -left-0.5" />
+                            <div className="w-3 h-3 border-t-2 border-r-2 border-emerald-400 absolute -top-0.5 -right-0.5" />
+                            <div className="w-3 h-3 border-b-2 border-l-2 border-emerald-400 absolute -bottom-0.5 -left-0.5" />
+                            <div className="w-3 h-3 border-b-2 border-r-2 border-emerald-400 absolute -bottom-0.5 -right-0.5" />
+                            <span className="text-[10px] text-white/50 font-medium">Align Road Defect</span>
+                          </div>
+                        </div>
 
-                    <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/60 border border-slate-700 text-[10px] font-bold text-white">
-                      1x
-                    </div>
-                  </div>
-
-                  {/* Real GPS Telemetry Pill */}
-                  <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px]">
-                    <div className="flex items-center space-x-1.5 text-slate-300">
-                      <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
-                      <span className="font-semibold text-white">
-                        {userCoords.isReal
-                          ? `${userCoords.lat?.toFixed(4)}°, ${userCoords.lng?.toFixed(4)}° (${userCoords.city})`
-                          : '30.7450° N, 76.7760° E (Sector 17)'}
-                      </span>
-                    </div>
-                    <span className="text-emerald-400 font-mono">
-                      {userCoords.isReal ? `±${userCoords.accuracy}m GPS Fix` : 'Demo Sector'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-center space-x-2 bg-slate-900 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-800">
-                    <button
-                      onClick={() => setRecordMode('video')}
-                      className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
-                        recordMode === 'video' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Video
-                    </button>
-                    <button
-                      onClick={() => setRecordMode('photo')}
-                      className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
-                        recordMode === 'photo' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Photo
-                    </button>
-                  </div>
-
-                  {/* Phone Camera & Gallery Direct Upload Trigger */}
-                  <div className="flex items-center justify-center space-x-2">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-xl bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 text-blue-300 text-xs font-semibold flex items-center space-x-1.5 shadow transition-all active:scale-95"
-                    >
-                      <Camera className="w-3.5 h-3.5 text-blue-400" />
-                      <span>📸 Snap / Choose Photo from Phone</span>
-                    </button>
-                    {capturedPreview && (
-                      <button
-                        onClick={() => {
-                          setCapturedBlob(null);
-                          setCapturedPreview(null);
-                          setPhotoCaptured(false);
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-center py-2">
-                    <button
-                      onClick={toggleRecording}
-                      title={recordMode === 'video' ? (isRecording ? "Stop Recording" : "Start Recording") : "Capture Photo"}
-                      className={`w-16 h-16 rounded-full border-4 ${isRecording ? 'border-rose-500/50' : 'border-slate-700'} p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl`}
-                    >
-                      <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600 animate-pulse' : 'bg-red-500'} flex items-center justify-center shadow-lg`}>
-                        {recordMode === 'video' ? (
-                          isRecording ? <Square className="h-5 w-5 text-white" /> : <div className="w-6 h-6 rounded-full bg-white" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-white" />
-                        )}
+                        <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/60 border border-slate-700 text-[10px] font-bold text-white z-20">
+                          1x
+                        </div>
+                      </>
+                    ) : isCameraStarting ? (
+                      /* 3. Initializing Loader */
+                      <div className="flex flex-col items-center justify-center space-y-2 text-slate-400 p-4">
+                        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                        <span className="text-xs font-semibold">Starting Rear Camera...</span>
                       </div>
-                    </button>
-                  </div>
-
-                  <div className="text-center text-xs">
-                    {recordMode === 'video' ? (
-                      isRecording ? (
-                        <span className="text-rose-400 font-bold flex items-center justify-center space-x-1.5 animate-pulse">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                          <span>Recording... {formatTime(recordingSeconds)}</span>
-                        </span>
-                      ) : recordingSaved && recordingSeconds > 0 ? (
-                        <span className="text-emerald-400 font-bold flex items-center justify-center space-x-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                          <span>Recorded ({formatTime(recordingSeconds)}) • Ready to Upload</span>
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-medium flex items-center justify-center space-x-1.5">
-                          <span className="w-2 h-2 rounded-full bg-slate-500" />
-                          <span>Ready to Record • Tap button to start</span>
-                        </span>
-                      )
+                    ) : cameraError ? (
+                      /* 4. Camera Error / Fallback State */
+                      <div className="p-4 text-center space-y-2 max-w-xs">
+                        <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
+                        <p className="text-xs text-slate-300 font-semibold">{cameraError}</p>
+                        <button
+                          onClick={startRearCamera}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                        >
+                          Retry Camera
+                        </button>
+                      </div>
                     ) : (
-                      <span className="text-slate-300 font-medium flex items-center justify-center space-x-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <span>{photoCaptured ? "Photo Snapped • Ready to Upload" : "Photo Mode • Tap button to capture"}</span>
-                      </span>
+                      /* 5. Camera Off / Tap to Start */
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <img
+                          src="/images/roads/road_pothole_d00.jpg"
+                          alt="Road Surface"
+                          className="w-full h-full object-cover opacity-40 filter blur-[1px]"
+                        />
+                        <button
+                          onClick={startRearCamera}
+                          className="absolute px-4 py-2 rounded-xl bg-slate-900/90 border border-emerald-500/50 text-white font-bold text-xs flex items-center space-x-2 shadow-xl hover:border-emerald-400 transition-all active:scale-95"
+                        >
+                          <Camera className="w-4 h-4 text-emerald-400" />
+                          <span>Start Live Rear Camera</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
-                  {/* POST-RECORDING / POST-PHOTO ACTION PANEL WITH DIRECT UPLOAD */}
-                  {((recordingSaved && recordingSeconds > 0) || photoCaptured) && (
-                    <div className="bg-slate-900/95 border border-emerald-500/30 rounded-2xl p-3.5 space-y-3 shadow-2xl backdrop-blur animate-in fade-in slide-in-from-bottom-2 duration-200 mt-2">
+                  {/* Hidden native camera / gallery file input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+
+                  {/* ── CONDITIONAL RENDER: CAPTURED PHOTO REVIEW vs LIVE CAMERA CONTROLS ── */}
+                  {capturedPreview ? (
+                    /* ════════════════════════════════════════════════════════════
+                       REVIEW MODE: RETAKE, CANCEL, PRESERVED GPS & UPLOAD
+                       ════════════════════════════════════════════════════════════ */
+                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      {/* Retake & Cancel Side-by-Side Controls */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={handleRetake}
+                          disabled={isUploading}
+                          className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                          <span>🔄 Retake</span>
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          disabled={isUploading}
+                          className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 text-rose-300 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow"
+                        >
+                          <X className="w-3.5 h-3.5 text-rose-400" />
+                          <span>❌ Cancel</span>
+                        </button>
+                      </div>
+
+                      {/* Upload Success Card OR Upload Action Card */}
                       {uploadSuccessData ? (
-                        <div className="space-y-2 text-center py-1">
+                        <div className="bg-slate-900/95 border border-emerald-500/40 rounded-2xl p-4 text-center space-y-3 shadow-2xl backdrop-blur">
                           <div className="inline-flex items-center space-x-1.5 text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                             <span>Road Hazard Uploaded & Logged!</span>
                           </div>
-                          <p className="text-[11px] text-slate-300">
-                            Observation ID: <span className="font-mono text-emerald-300 font-semibold">{uploadSuccessData.observation_id}</span>
+
+                          <p className="text-xs text-slate-300 font-semibold">
+                            Observation ID: <span className="font-mono text-emerald-300">{uploadSuccessData.observation_id}</span>
                           </p>
-                          <p className="text-[10px] text-slate-400">
-                            Location: {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
+
+                          <p className="text-[11px] text-slate-400">
+                            📍 {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
                           </p>
+
                           {uploadSuccessData.preview_url && (
-                            <div className="w-24 h-16 mx-auto rounded-lg overflow-hidden border border-slate-700 my-1 shadow">
+                            <div className="w-28 h-20 mx-auto rounded-xl overflow-hidden border border-slate-700 shadow-md">
                               <img src={uploadSuccessData.preview_url} alt="Uploaded" className="w-full h-full object-cover" />
                             </div>
                           )}
+
                           <div className="flex items-center space-x-2 pt-1">
                             <button
                               onClick={() => setUserTab('map')}
                               className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-500/25 active:scale-95"
                             >
                               <Eye className="w-4 h-4" />
-                              <span>View Pin & Photo on Map 🗺️</span>
+                              <span>View Pin on Map 🗺️</span>
                             </button>
                             <button
-                              onClick={() => {
-                                setRecordingSaved(false);
-                                setPhotoCaptured(false);
-                                setRecordingSeconds(0);
-                                setCapturedBlob(null);
-                                setCapturedPreview(null);
-                                setUploadSuccessData(null);
-                              }}
+                              onClick={handleRetake}
                               className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all flex items-center justify-center space-x-1 shadow"
                             >
                               <Camera className="w-3.5 h-3.5" />
-                              <span>New</span>
+                              <span>Snap New</span>
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
+                        <div className="bg-slate-900/95 border border-emerald-500/30 rounded-2xl p-3.5 space-y-3 shadow-2xl backdrop-blur">
+                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800">
                             <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
                               <CheckCircle2 className="w-4 h-4" />
-                              <span>
-                                {recordMode === 'video' ? `Session (${formatTime(recordingSeconds)})` : 'Photo Snapshot'}
-                              </span>
+                              <span>Photo Ready to Upload</span>
                             </div>
-                            <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-bold border border-rose-500/30">
-                              Pothole (D00) · 87% Conf.
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/20">
+                              GPS Tagged
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                            <div className="flex items-center space-x-1">
-                              <MapPin className="w-3 h-3 text-emerald-400" />
-                              <span>
-                                {userCoords.isReal
-                                  ? `${userCoords.lat.toFixed(4)}°N, ${userCoords.lng.toFixed(4)}°E (${userCoords.city})`
-                                  : 'Sector 17 (30.745°N, 76.776°E)'}
+                          {/* Preserved Telemetry: Locked GPS & Capture Timestamp */}
+                          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                            <div className="flex items-center space-x-1.5 truncate">
+                              <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span className="truncate">
+                                {(lockedCoords?.lat ?? userCoords.lat).toFixed(4)}°N, {(lockedCoords?.lng ?? userCoords.lng).toFixed(4)}°E
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1">
-                              <Activity className="w-3 h-3 text-amber-400" />
-                              <span>Live Geotag</span>
+                            <div className="flex items-center space-x-1.5 justify-end text-slate-400">
+                              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>{new Date(captureTimestamp || Date.now()).toLocaleTimeString()}</span>
                             </div>
                           </div>
 
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                            <span>Sector: <strong className="text-white">{lockedCoords?.city || userCoords.city || 'Chandigarh'}</strong></span>
+                            <span className="text-emerald-400 font-mono">±{lockedCoords?.accuracy || userCoords.accuracy}m Accuracy</span>
+                          </div>
+
                           {uploadError && (
-                            <p className="text-[10px] text-rose-400 text-center font-medium bg-rose-500/10 py-1 rounded">
+                            <p className="text-[11px] text-rose-400 text-center font-medium bg-rose-500/10 p-2 rounded-xl border border-rose-500/20">
                               {uploadError}
                             </p>
                           )}
 
-                          <div className="space-y-2 pt-0.5">
-                            <button
-                              onClick={handleQuickUpload}
-                              disabled={isUploading}
-                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50"
-                            >
-                              {isUploading ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                                  <span>Uploading & Snapping to Road...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UploadCloud className="w-4 h-4 text-slate-950" />
-                                  <span>Upload & Log Hazard to JanDrishti</span>
-                                </>
-                              )}
-                            </button>
-
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => {
-                                  setRecordingSaved(false);
-                                  setPhotoCaptured(false);
-                                  setRecordingSeconds(0);
-                                  setUploadError(null);
-                                }}
-                                disabled={isUploading}
-                                className="flex-1 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-[11px] font-semibold transition-all flex items-center justify-center space-x-1"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                <span>Discard</span>
-                              </button>
-                              <button
-                                onClick={onOpenUpload}
-                                disabled={isUploading}
-                                className="flex-1 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 text-[11px] font-semibold transition-all flex items-center justify-center space-x-1 border border-slate-700/50"
-                              >
-                                <Sliders className="w-3 h-3" />
-                                <span>Edit Telemetry</span>
-                              </button>
-                            </div>
-                          </div>
-                        </>
+                          {/* EXPLICIT UPLOAD BUTTON - ONLY UPLOADS WHEN USER CLICKS THIS */}
+                          <button
+                            onClick={handleQuickUpload}
+                            disabled={isUploading}
+                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50 mt-1"
+                          >
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                                <span>Uploading & Snapping to Road...</span>
+                              </>
+                            ) : (
+                              <>
+                                <UploadCloud className="w-4 h-4 text-slate-950" />
+                                <span>Upload & Log Hazard to JanDrishti</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       )}
+                    </div>
+                  ) : (
+                    /* ════════════════════════════════════════════════════════════
+                       LIVE CAMERA VIEW CONTROLS (PHOTO & VIDEO SHUTTER)
+                       ════════════════════════════════════════════════════════════ */
+                    <div className="space-y-3">
+                      {/* Live GPS Telemetry Status Bar */}
+                      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px]">
+                        <div className="flex items-center space-x-1.5 text-slate-300">
+                          <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+                          <span className="font-semibold text-white">
+                            {userCoords.isReal
+                              ? `${userCoords.lat?.toFixed(4)}°, ${userCoords.lng?.toFixed(4)}° (${userCoords.city})`
+                              : '30.7450° N, 76.7760° E (Sector 17)'}
+                          </span>
+                        </div>
+                        <span className="text-emerald-400 font-mono">
+                          {userCoords.isReal ? `±${userCoords.accuracy}m GPS Fix` : 'Demo Sector'}
+                        </span>
+                      </div>
+
+                      {/* Photo / Video Mode Selector */}
+                      <div className="flex items-center justify-center space-x-2 bg-slate-900 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-800">
+                        <button
+                          onClick={() => setRecordMode('photo')}
+                          className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+                            recordMode === 'photo' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Photo
+                        </button>
+                        <button
+                          onClick={() => setRecordMode('video')}
+                          className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+                            recordMode === 'video' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Video
+                        </button>
+                      </div>
+
+                      {/* Phone Native Camera / Gallery Upload Trigger */}
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3.5 py-1.5 rounded-xl bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 text-blue-300 text-xs font-semibold flex items-center space-x-1.5 shadow transition-all active:scale-95"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-blue-400" />
+                          <span>📸 Snap / Choose Photo from Phone</span>
+                        </button>
+                      </div>
+
+                      {/* Shutter Button */}
+                      <div className="flex items-center justify-center py-1">
+                        <button
+                          onClick={toggleRecording}
+                          title={recordMode === 'video' ? (isRecording ? "Stop Recording" : "Start Recording") : "Capture Photo"}
+                          className={`w-16 h-16 rounded-full border-4 ${isRecording ? 'border-rose-500/50' : 'border-slate-700'} p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl`}
+                        >
+                          <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600 animate-pulse' : 'bg-red-500'} flex items-center justify-center shadow-lg`}>
+                            {recordMode === 'video' ? (
+                              isRecording ? <Square className="h-5 w-5 text-white" /> : <div className="w-6 h-6 rounded-full bg-white" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-white" />
+                            )}
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Shutter Status Text */}
+                      <div className="text-center text-xs">
+                        {recordMode === 'video' ? (
+                          isRecording ? (
+                            <span className="text-rose-400 font-bold flex items-center justify-center space-x-1.5 animate-pulse">
+                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                              <span>Recording... {formatTime(recordingSeconds)} / 00:30</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-medium flex items-center justify-center space-x-1.5">
+                              <span className="w-2 h-2 rounded-full bg-slate-500" />
+                              <span>Ready to Record • Tap button to start</span>
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-slate-300 font-medium flex items-center justify-center space-x-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                            <span>Photo Mode • Tap shutter button to snap road hazard</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
