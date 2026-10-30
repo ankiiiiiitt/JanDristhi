@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+ENV/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# AI & Weights
+*.pt
+*.onnx
+*.engine
+ai-engine/weights/*.pt
+ai-engine/runs/
+!ai-engine/weights/.gitkeep
+
+# Environment & Secrets (NEVER COMMIT!)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+ai-engine/.env
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Uploads & Temp Data
+backend/uploads/
+ai-engine/output/
+!backend/uploads/.gitkeep
+!ai-engine/output/.gitkeep
