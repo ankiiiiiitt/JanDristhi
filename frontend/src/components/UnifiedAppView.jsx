@@ -509,6 +509,7 @@ export default function UnifiedAppView({
                       geojson={roadsGeoJson}
                       observations={observations}
                       onSelectSegment={setSelectedLocation}
+                      height="100%"
                     />
                   </div>
                 </div>

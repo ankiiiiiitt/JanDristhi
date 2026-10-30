@@ -90,6 +90,51 @@ export default function UserMobileApp({
     return `00:${m}:${s}`;
   };
 
+  // Real GPS Geolocation State
+  const [userCoords, setUserCoords] = useState({
+    lat: 30.7450,
+    lng: 76.7760,
+    accuracy: 12,
+    city: 'Detecting Location...',
+    isReal: false
+  });
+  const [isLocatingDevice, setIsLocatingDevice] = useState(false);
+
+  // Auto-acquire real device GPS on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      setIsLocatingDevice(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setIsLocatingDevice(false);
+          const { latitude, longitude, accuracy } = pos.coords;
+          setUserCoords({
+            lat: latitude,
+            lng: longitude,
+            accuracy: Math.round(accuracy || 10),
+            city: 'Live Location',
+            isReal: true
+          });
+
+          // Reverse geocode via OpenStreetMap Nominatim
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+            .then(r => r.json())
+            .then(data => {
+              const detectedCity = data.address?.city || data.address?.town || data.address?.suburb || data.address?.state_district || 'Live Location';
+              setUserCoords(prev => ({ ...prev, city: detectedCity }));
+            })
+            .catch(() => {});
+        },
+        (err) => {
+          setIsLocatingDevice(false);
+          console.warn('Device GPS unavailable, falling back to default:', err);
+          setUserCoords(prev => ({ ...prev, city: 'Chandigarh' }));
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+  }, []);
+
   const toggleRecording = async () => {
     if (recordMode === 'photo') {
       setPhotoFlash(true);
@@ -147,8 +192,13 @@ export default function UserMobileApp({
       const blob = await imgRes.blob();
       formData.append('file', blob, 'road_hazard_recording.jpg');
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CTU-BUS-104');
-      formData.append('latitude', '30.7450');
-      formData.append('longitude', '76.7760');
+      const finalLat = userCoords.lat ? userCoords.lat.toFixed(5) : '30.7450';
+      const finalLng = userCoords.lng ? userCoords.lng.toFixed(5) : '76.7760';
+      const finalSector = userCoords.isReal ? (userCoords.city || 'My Location') : 'Sector 17';
+
+      formData.append('latitude', finalLat);
+      formData.append('longitude', finalLng);
+      formData.append('sector', finalSector);
       formData.append('speed_kmph', '34.5');
       formData.append('telemetry_z_shock', '3.1');
 
@@ -437,10 +487,10 @@ export default function UserMobileApp({
               </div>
 
               <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
-                <MapPin className="h-3 w-3 text-emerald-400" />
-                <span>Chandigarh</span>
+                <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-emerald-400'}`} />
+                <span className="font-semibold max-w-[120px] truncate">{userCoords.city || 'Chandigarh'}</span>
                 <span className="text-slate-600">•</span>
-                <span>28°C Clear</span>
+                <span className="text-slate-400">{userCoords.isReal ? 'Live GPS' : '28°C Clear'}</span>
               </div>
             </div>
 
@@ -561,6 +611,21 @@ export default function UserMobileApp({
                     <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/60 border border-slate-700 text-[10px] font-bold text-white">
                       1x
                     </div>
+                  </div>
+
+                  {/* Real GPS Telemetry Pill */}
+                  <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px]">
+                    <div className="flex items-center space-x-1.5 text-slate-300">
+                      <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+                      <span className="font-semibold text-white">
+                        {userCoords.isReal
+                          ? `${userCoords.lat?.toFixed(4)}°, ${userCoords.lng?.toFixed(4)}° (${userCoords.city})`
+                          : '30.7450° N, 76.7760° E (Sector 17)'}
+                      </span>
+                    </div>
+                    <span className="text-emerald-400 font-mono">
+                      {userCoords.isReal ? `±${userCoords.accuracy}m GPS Fix` : 'Demo Sector'}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-center space-x-2 bg-slate-900 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-800">
@@ -764,8 +829,26 @@ export default function UserMobileApp({
                     />
                   </div>
 
-                  <div className="h-56 rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
-                    <RoadMap geojson={roadsGeoJson} observations={observations} />
+                  {/* Map Header Info */}
+                  <div className="flex items-center justify-between text-xs bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                      <span className="font-semibold text-slate-200">
+                        {userCoords.isReal ? `Live: ${userCoords.city}` : 'Smart City Map'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-blue-400 font-mono">
+                      {userCoords.isReal ? `${userCoords.lat?.toFixed(4)}, ${userCoords.lng?.toFixed(4)}` : 'Chandigarh'}
+                    </span>
+                  </div>
+
+                  <div className="h-72 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
+                    <RoadMap
+                      geojson={roadsGeoJson}
+                      observations={observations}
+                      userLocation={userCoords}
+                      height="100%"
+                    />
                   </div>
 
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">

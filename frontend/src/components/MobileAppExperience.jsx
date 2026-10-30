@@ -102,6 +102,45 @@ export default function MobileAppExperience({
     return `00:${m}:${s}`;
   };
 
+  // Real GPS Geolocation State
+  const [userCoords, setUserCoords] = useState({
+    lat: 30.7450,
+    lng: 76.7760,
+    accuracy: 12,
+    city: 'Detecting Location...',
+    isReal: false
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          setUserCoords({
+            lat: latitude,
+            lng: longitude,
+            accuracy: Math.round(accuracy || 10),
+            city: 'Live Location',
+            isReal: true
+          });
+
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+            .then(r => r.json())
+            .then(data => {
+              const detectedCity = data.address?.city || data.address?.town || data.address?.suburb || data.address?.state_district || 'Live Location';
+              setUserCoords(prev => ({ ...prev, city: detectedCity }));
+            })
+            .catch(() => {});
+        },
+        (err) => {
+          console.warn('MobileAppExperience GPS unavailable:', err);
+          setUserCoords(prev => ({ ...prev, city: 'Chandigarh' }));
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+  }, []);
+
   // Start / Stop camera in user record tab
   const toggleRecording = async () => {
     if (recordMode === 'photo') {
@@ -159,8 +198,13 @@ export default function MobileAppExperience({
       const blob = await imgRes.blob();
       formData.append('file', blob, 'road_hazard_recording.jpg');
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CTU-BUS-104');
-      formData.append('latitude', '30.7450');
-      formData.append('longitude', '76.7760');
+      const finalLat = userCoords.lat ? userCoords.lat.toFixed(5) : '30.7450';
+      const finalLng = userCoords.lng ? userCoords.lng.toFixed(5) : '76.7760';
+      const finalSector = userCoords.isReal ? (userCoords.city || 'My Location') : 'Sector 17';
+
+      formData.append('latitude', finalLat);
+      formData.append('longitude', finalLng);
+      formData.append('sector', finalSector);
       formData.append('speed_kmph', '34.5');
       formData.append('telemetry_z_shock', '3.1');
 
@@ -597,10 +641,10 @@ export default function MobileAppExperience({
 
               {/* Weather & Location Pill */}
               <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
-                <MapPin className="h-3 w-3 text-emerald-400" />
-                <span>Chandigarh</span>
+                <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-emerald-400'}`} />
+                <span className="font-semibold max-w-[120px] truncate">{userCoords.city || 'Chandigarh'}</span>
                 <span className="text-slate-600">•</span>
-                <span>28°C Clear</span>
+                <span className="text-slate-400">{userCoords.isReal ? 'Live GPS' : '28°C Clear'}</span>
               </div>
             </div>
 
@@ -943,8 +987,13 @@ export default function MobileAppExperience({
                   </div>
 
                   {/* Interactive Leaflet Map */}
-                  <div className="h-56 rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
-                    <RoadMap geojson={roadsGeoJson} observations={observations} />
+                  <div className="h-72 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
+                    <RoadMap
+                      geojson={roadsGeoJson}
+                      observations={observations}
+                      userLocation={userCoords}
+                      height="100%"
+                    />
                   </div>
 
                   {/* Reported Issues Quick Stats */}
@@ -1188,7 +1237,12 @@ export default function MobileAppExperience({
                     </div>
 
                     <div className="h-44 rounded-xl overflow-hidden border border-slate-800 relative">
-                      <RoadMap geojson={roadsGeoJson} observations={observations} />
+                      <RoadMap
+                        geojson={roadsGeoJson}
+                        observations={observations}
+                        userLocation={userCoords}
+                        height="100%"
+                      />
                     </div>
                   </div>
                 </>
@@ -1435,7 +1489,12 @@ export default function MobileAppExperience({
                   </div>
 
                   <div className="h-[440px] rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
-                    <RoadMap geojson={roadsGeoJson} observations={observations} />
+                    <RoadMap
+                      geojson={roadsGeoJson}
+                      observations={observations}
+                      userLocation={userCoords}
+                      height="100%"
+                    />
                   </div>
                 </div>
               )}
