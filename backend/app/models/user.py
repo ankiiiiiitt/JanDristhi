@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -10,7 +10,7 @@ class UserRole(str, Enum):
     CONTRACTOR = "contractor"
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str = Field(..., description="User email address")
     full_name: str
     role: UserRole = UserRole.MUNICIPAL_OFFICER
     ward_id: Optional[str] = "WARD-174"
@@ -19,7 +19,7 @@ class UserCreate(UserBase):
     password: str
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str = Field(..., description="User email address")
     password: str
 
 class UserResponse(UserBase):
@@ -30,3 +30,4 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+

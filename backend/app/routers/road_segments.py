@@ -36,7 +36,8 @@ async def get_roads_geojson(ward_id: Optional[str] = None):
             "properties": {
                 "segment_id": seg["segment_id"],
                 "name": seg["name"],
-                "ward_id": seg.get("ward_id", "WARD-174"),
+                "ward_id": seg.get("ward_id", "SEC-17"),
+                "area_name": seg.get("area_name", seg.get("ward_id", "Chandigarh")),
                 "health_score": health,
                 "status_category": seg.get("status_category", "good"),
                 "hazard_count": seg.get("hazard_count", 0),
@@ -107,3 +108,4 @@ async def update_road_segment(segment_id: str, updates: RoadSegmentUpdate):
         segment.update(data_to_update)
 
     return {"success": True, "updated": data_to_update}
+

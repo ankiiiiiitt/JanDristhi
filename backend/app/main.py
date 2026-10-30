@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app.config import settings
 from app.database.mongodb import db_manager
-from app.routers import health, auth, observations, road_segments, risk, repairs
+from app.routers import health, auth, observations, road_segments, risk, repairs, collector
 
 # Configure logging
 logging.basicConfig(
@@ -57,6 +57,7 @@ app.include_router(observations.router, prefix=settings.API_PREFIX)
 app.include_router(road_segments.router, prefix=settings.API_PREFIX)
 app.include_router(risk.router, prefix=settings.API_PREFIX)
 app.include_router(repairs.router, prefix=settings.API_PREFIX)
+app.include_router(collector.router, prefix=settings.API_PREFIX)
 
 @app.get("/")
 async def root():
@@ -91,3 +92,4 @@ if __name__ == "__main__":
         port=settings.BACKEND_PORT,
         reload=True
     )
+

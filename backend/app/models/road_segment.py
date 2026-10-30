@@ -25,3 +25,4 @@ class RoadSegmentUpdate(BaseModel):
     health_score: Optional[float] = None
     status_category: Optional[RoadConditionStatus] = None
     hazard_count: Optional[int] = None
+

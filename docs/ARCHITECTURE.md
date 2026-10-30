@@ -89,3 +89,4 @@ To ensure all 5 developers can work without waiting on each other:
 1. **Mock Fallback Layer:** Both frontend and backend have built-in mock services matching `API_CONTRACT.md`.
 2. **AI Engine Standalone Runner:** AI module can run on arbitrary local images and print JSON predictions without needing FastAPI or MongoDB.
 3. **Database Seed Script:** A standalone script provides pre-populated Bangalore/Urban road segments with realistic GeoJSON geometries.
+

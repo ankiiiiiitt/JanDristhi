@@ -84,3 +84,4 @@ class MultiHazardRiskPredictor:
                 {"type": "Monsoon Runoff Vulnerability", "weight": round(monsoon_runoff_index * self.w_monsoon, 2)}
             ]
         }
+

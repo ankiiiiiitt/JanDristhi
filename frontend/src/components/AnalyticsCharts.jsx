@@ -16,7 +16,7 @@ export default function AnalyticsCharts({ overview, selectedSegment }) {
   const totalHazards = Object.values(distribution).reduce((a, b) => a + b, 0) || 1;
 
   const handleRunEvaluation = async () => {
-    const segmentId = selectedSegment?.segment_id || "RS-MG-01";
+    const segmentId = selectedSegment?.segment_id || "RS-CHD-SEC-17-001";
     setEvaluating(true);
     try {
       const res = await evaluateSegmentRisk(segmentId);
@@ -47,7 +47,7 @@ export default function AnalyticsCharts({ overview, selectedSegment }) {
             { label: "Potholes (D00)", count: distribution.potholes, color: "bg-rose-500", text: "text-rose-400" },
             { label: "Alligator Cracking (D10)", count: distribution.alligator_cracking, color: "bg-amber-500", text: "text-amber-400" },
             { label: "Longitudinal Cracks (D20)", count: distribution.longitudinal_cracks, color: "bg-blue-500", text: "text-blue-400" },
-            { label: "Manhole Depressions (D40)", count: distribution.manhole_depressions, color: "bg-purple-500", text: "text-purple-400" }
+            { label: "Transverse Cracks (D40)", count: distribution.manhole_depressions, color: "bg-purple-500", text: "text-purple-400" }
           ].map((item, idx) => {
             const pct = Math.round((item.count / totalHazards) * 100);
             return (
@@ -70,9 +70,9 @@ export default function AnalyticsCharts({ overview, selectedSegment }) {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-100 flex items-center space-x-2">
             <TrendingUp className="h-4 w-4 text-blue-400" />
-            <span>Ward Health Index</span>
+            <span>Area Health Index</span>
           </h3>
-          <span className="text-xs text-slate-400">Bangalore Urban</span>
+          <span className="text-xs text-slate-400">Chandigarh Urban</span>
         </div>
 
         <div className="space-y-3">
@@ -108,7 +108,7 @@ export default function AnalyticsCharts({ overview, selectedSegment }) {
           </div>
 
           <p className="text-xs text-slate-300 mb-4">
-            Target Segment: <b className="text-slate-100">{selectedSegment?.name || "MG Road - Sector 3 (Default)"}</b>
+            Target Segment: <b className="text-slate-100">{selectedSegment?.name || "Sector 17 - Madhya Marg (Default)"}</b>
           </p>
 
           {evaluationResult ? (
@@ -148,3 +148,4 @@ export default function AnalyticsCharts({ overview, selectedSegment }) {
     </div>
   );
 }
+

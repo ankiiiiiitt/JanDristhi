@@ -69,8 +69,27 @@ async def verify_repair_work(repair_id: str, after_file: UploadFile = File(...))
 
     if db_manager.is_connected and db_manager.db is not None:
         await db_manager.db.repair_records.update_one({"repair_id": repair_id}, {"$set": updates})
+        if updates["damage_cleared"]:
+            # Improve linked road segment health
+            seg_id = repair.get("segment_id")
+            if seg_id:
+                await db_manager.db.road_segments.update_one(
+                    {"segment_id": seg_id},
+                    {"$inc": {"health_score": 10.0, "hazard_count": -1}}
+                )
     else:
         repair.update(updates)
+        if updates["damage_cleared"]:
+            seg_id = repair.get("segment_id")
+            if seg_id:
+                for s in mock_store.road_segments:
+                    if s["segment_id"] == seg_id:
+                        s["health_score"] = min(98.0, s.get("health_score", 60.0) + 12.0)
+                        s["hazard_count"] = max(0, s.get("hazard_count", 1) - 1)
+                        if s["health_score"] >= 75.0:
+                            s["status_category"] = "good"
+                        elif s["health_score"] >= 50.0:
+                            s["status_category"] = "fair"
 
     return {
         "success": True,
@@ -82,3 +101,4 @@ async def verify_repair_work(repair_id: str, after_file: UploadFile = File(...))
             "message": verification["message"]
         }
     }
+

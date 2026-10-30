@@ -27,7 +27,8 @@ export default function Navbar({ isMock, onOpenUpload, activeTab, setActiveTab }
             {[
               { id: 'dashboard', label: 'GIS Map & Roads' },
               { id: 'analytics', label: 'Risk Analytics' },
-              { id: 'repairs', label: 'Repair Verification' }
+              { id: 'repairs', label: 'Repair Verification' },
+              { id: 'collector', label: 'Mobile Collector' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -70,3 +71,4 @@ export default function Navbar({ isMock, onOpenUpload, activeTab, setActiveTab }
     </header>
   );
 }
+

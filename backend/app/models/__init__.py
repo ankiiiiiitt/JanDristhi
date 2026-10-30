@@ -19,3 +19,4 @@ __all__ = [
     "RiskAction", "HazardFactor", "RiskAssessmentModel",
     "RepairStatus", "RepairRecordModel"
 ]
+

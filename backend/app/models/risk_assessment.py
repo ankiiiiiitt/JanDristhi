@@ -23,3 +23,4 @@ class RiskAssessmentModel(BaseModel):
     contributing_hazards: List[HazardFactor] = []
     estimated_cost_inr: float = 0.0
     assessed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+

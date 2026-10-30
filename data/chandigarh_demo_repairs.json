@@ -1,0 +1,44 @@
+[
+  {
+    "repair_id": "REP-CHD-2026-01",
+    "segment_id": "RS-CHD-IND-PH1-019",
+    "contractor_name": "Chandigarh Highway Infrastructure Pvt Ltd",
+    "status": "completed_unverified",
+    "before_image_url": "/images/roads/road_pothole_d00.jpg",
+    "after_image_url": "/images/roads/road_repaired_patch.jpg",
+    "ai_verification_score": null,
+    "damage_cleared": null,
+    "sector": "Industrial Area Phase 1",
+    "created_at": "2026-10-28T06:15:37.134743+00:00",
+    "updated_at": "2026-10-30T02:15:37.134746+00:00",
+    "data_label": "[DEMO DATA - REPAIR WORK ORDER]"
+  },
+  {
+    "repair_id": "REP-CHD-2026-02",
+    "segment_id": "RS-CHD-SEC-22-011",
+    "contractor_name": "Shivalik Road Builders & Contractors",
+    "status": "completed_unverified",
+    "before_image_url": "/images/roads/road_alligator_d10.jpg",
+    "after_image_url": "/images/roads/road_repaired_fresh_asphalt.jpg",
+    "ai_verification_score": null,
+    "damage_cleared": null,
+    "sector": "Sector 22",
+    "created_at": "2026-10-27T06:15:37.134748+00:00",
+    "updated_at": "2026-10-30T00:15:37.134749+00:00",
+    "data_label": "[DEMO DATA - REPAIR WORK ORDER]"
+  },
+  {
+    "repair_id": "REP-CHD-2026-03",
+    "segment_id": "RS-CHD-SEC-17-005",
+    "contractor_name": "Punjab & Haryana Municipal Works",
+    "status": "verified_closed",
+    "before_image_url": "/images/roads/road_longitudinal_d20.jpg",
+    "after_image_url": "/images/roads/road_repaired_fresh_asphalt.jpg",
+    "ai_verification_score": 0.97,
+    "damage_cleared": true,
+    "sector": "Sector 17",
+    "created_at": "2026-10-25T06:15:37.134750+00:00",
+    "updated_at": "2026-10-29T06:15:37.134751+00:00",
+    "data_label": "[DEMO DATA - REPAIR WORK ORDER]"
+  }
+]

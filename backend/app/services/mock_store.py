@@ -1,11 +1,14 @@
 import copy
+import json
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 
 class MockDataStore:
     """
     In-memory data store providing contract-compliant state for all 6 collections.
-    Used for local testing when MongoDB Atlas is not yet configured.
+    Contains Chandigarh demo data across Sector 17, Sector 22, Sector 34, and Industrial Area Phase 1.
+    All synthetic/demo data is explicitly labeled as [DEMO DATA - SIMULATED].
     """
     def __init__(self):
         self.users: List[Dict[str, Any]] = [
@@ -13,233 +16,211 @@ class MockDataStore:
                 "user_id": "USR-101",
                 "email": "officer@jandrishti.gov.in",
                 "hashed_password": "$2b$12$eD8mD2F6K6b1rJ8O0M6a.eJ0J3T6G2o.4V9wR1q8z9e4n6k5v3a", # pass: HackathonPassword2026!
-                "full_name": "Dr. Ananya Rao",
+                "full_name": "Municipal Chief Engineer (Chandigarh)",
                 "role": "municipal_officer",
-                "ward_id": "WARD-174",
+                "ward_id": "SEC-17",
                 "created_at": "2026-10-30T09:00:00Z"
             },
             {
                 "user_id": "USR-102",
                 "email": "contractor@infra.com",
                 "hashed_password": "$2b$12$eD8mD2F6K6b1rJ8O0M6a.eJ0J3T6G2o.4V9wR1q8z9e4n6k5v3a",
-                "full_name": "Suresh Infra Works",
+                "full_name": "Shivalik Road Builders & Contractors",
                 "role": "contractor",
-                "ward_id": "WARD-174",
+                "ward_id": "SEC-22",
                 "created_at": "2026-10-30T09:15:00Z"
             }
         ]
 
         self.vehicles: List[Dict[str, Any]] = [
             {
-                "vehicle_id": "VEH-KA04-9122",
+                "vehicle_id": "CTU-BUS-104",
+                "vehicle_type": "bus",
+                "operator_name": "Gurpreet Singh (CTU)",
+                "status": "active",
+                "last_known_location": {"type": "Point", "coordinates": [76.8040, 30.7060]},
+                "last_active_at": datetime.now(timezone.utc).isoformat(),
+                "data_label": "[DEMO DATA - SIMULATED VEHICLE]"
+            },
+            {
+                "vehicle_id": "MC-WASTE-88",
                 "vehicle_type": "waste_truck",
-                "operator_name": "Anil Patil",
+                "operator_name": "Harish Sharma (MC Chandigarh)",
                 "status": "active",
-                "last_known_location": {"type": "Point", "coordinates": [77.5946, 12.9716]},
-                "last_active_at": datetime.now(timezone.utc).isoformat()
+                "last_known_location": {"type": "Point", "coordinates": [76.7720, 30.7305]},
+                "last_active_at": datetime.now(timezone.utc).isoformat(),
+                "data_label": "[DEMO DATA - SIMULATED VEHICLE]"
             },
             {
-                "vehicle_id": "VEH-KA01-3310",
+                "vehicle_id": "CHD-PATROL-12",
                 "vehicle_type": "inspection_van",
-                "operator_name": "Ramesh Kumar",
+                "operator_name": "Inspector Jaswinder Singh",
                 "status": "active",
-                "last_known_location": {"type": "Point", "coordinates": [77.6085, 12.9790]},
-                "last_active_at": datetime.now(timezone.utc).isoformat()
+                "last_known_location": {"type": "Point", "coordinates": [76.7825, 30.7408]},
+                "last_active_at": datetime.now(timezone.utc).isoformat(),
+                "data_label": "[DEMO DATA - SIMULATED VEHICLE]"
             }
         ]
 
-        self.road_segments: List[Dict[str, Any]] = [
-            {
-                "segment_id": "RS-MG-01",
-                "name": "MG Road - Trinity Circle to Brigade Junction",
-                "ward_id": "WARD-174",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [77.6095, 12.9738],
-                        [77.6145, 12.9745],
-                        [77.6189, 12.9752]
-                    ]
-                },
-                "length_meters": 1150.0,
-                "health_score": 42.0,
-                "status_category": "critical",
-                "hazard_count": 6,
-                "last_inspected_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "segment_id": "RS-ORR-02",
-                "name": "Outer Ring Road - Marathahalli Flyover Segment",
-                "ward_id": "WARD-150",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [77.6970, 12.9560],
-                        [77.7020, 12.9575],
-                        [77.7065, 12.9590]
-                    ]
-                },
-                "length_meters": 1400.0,
-                "health_score": 68.5,
-                "status_category": "fair",
-                "hazard_count": 2,
-                "last_inspected_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "segment_id": "RS-IND-03",
-                "name": "100 Feet Road - Indiranagar 12th Main Stretch",
-                "ward_id": "WARD-112",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [77.6410, 12.9780],
-                        [77.6415, 12.9720],
-                        [77.6420, 12.9660]
-                    ]
-                },
-                "length_meters": 1300.0,
-                "health_score": 88.0,
-                "status_category": "good",
-                "hazard_count": 0,
-                "last_inspected_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "segment_id": "RS-KOR-04",
-                "name": "Koramangala 80 Feet Road - Sony World Signal to 6th Block",
-                "ward_id": "WARD-151",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [77.6250, 12.9340],
-                        [77.6290, 12.9345],
-                        [77.6340, 12.9350]
-                    ]
-                },
-                "length_meters": 950.0,
-                "health_score": 38.0,
-                "status_category": "critical",
-                "hazard_count": 8,
-                "last_inspected_at": datetime.now(timezone.utc).isoformat()
-            }
-        ]
+        # Load Chandigarh road segments from JSON or use built-in fallback
+        self.road_segments: List[Dict[str, Any]] = self._load_chandigarh_segments()
 
-        self.observations: List[Dict[str, Any]] = [
-            {
-                "observation_id": "OBS-20261030-001",
-                "vehicle_id": "VEH-KA04-9122",
-                "location": {"type": "Point", "coordinates": [77.6145, 12.9745]},
-                "altitude": 920.4,
-                "speed_kmph": 32.5,
-                "telemetry_z_shock": 4.12,
-                "image_url": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80",
-                "detection_status": "processed",
-                "detections": [
-                    {
-                        "class_id": "D00",
-                        "class_name": "Pothole",
-                        "confidence": 0.92,
-                        "bbox": [150, 200, 320, 420],
-                        "severity": "critical",
-                        "estimated_area_sqm": 0.65
-                    }
-                ],
-                "linked_segment_id": "RS-MG-01",
-                "captured_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "observation_id": "OBS-20261030-002",
-                "vehicle_id": "VEH-KA01-3310",
-                "location": {"type": "Point", "coordinates": [77.6290, 12.9345]},
-                "altitude": 915.0,
-                "speed_kmph": 28.0,
-                "telemetry_z_shock": 3.45,
-                "image_url": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80",
-                "detection_status": "processed",
-                "detections": [
-                    {
-                        "class_id": "D10",
-                        "class_name": "Alligator Cracking",
-                        "confidence": 0.84,
-                        "bbox": [100, 120, 400, 500],
-                        "severity": "high",
-                        "estimated_area_sqm": 1.20
-                    }
-                ],
-                "linked_segment_id": "RS-KOR-04",
-                "captured_at": datetime.now(timezone.utc).isoformat()
-            }
-        ]
+        # Load observations
+        self.observations: List[Dict[str, Any]] = self._load_chandigarh_observations()
 
+        # Load repair records
+        self.repair_records: List[Dict[str, Any]] = self._load_chandigarh_repairs()
+
+        # Initial Risk Assessments
         self.risk_assessments: List[Dict[str, Any]] = [
             {
-                "assessment_id": "RSK-20261030-01",
-                "segment_id": "RS-MG-01",
-                "health_score": 42.0,
-                "failure_probability": 0.85,
+                "assessment_id": "RSK-CHD-2026-01",
+                "segment_id": "RS-CHD-IND-PH1-019",
+                "segment_name": "Industrial Area Phase 1 Spine Road",
+                "sector": "Industrial Area Phase 1",
+                "health_score": 36.5,
+                "failure_probability": 0.88,
                 "risk_level": "critical",
                 "recommended_action": "emergency_resurfacing",
                 "hazard_factors": {
-                    "pothole_cluster_density": 0.88,
-                    "monsoon_drainage_risk": 0.72,
-                    "traffic_vibration_index": 0.80
+                    "pothole_cluster_density": 0.92,
+                    "monsoon_drainage_risk": 0.85,
+                    "traffic_vibration_index": 0.89
                 },
                 "contributing_hazards": [
-                    {"type": "Deep Pothole Cluster", "weight": 0.45},
-                    {"type": "Water Logging Runoff", "weight": 0.35},
-                    {"type": "Heavy Bus Transit Shock", "weight": 0.20}
+                    {"type": "Heavy Freight Wheel Ruts", "weight": 0.45},
+                    {"type": "Water Logging Runoff Index", "weight": 0.35},
+                    {"type": "Deep Pothole Cavities (D00)", "weight": 0.20}
                 ],
-                "estimated_cost_inr": 350000.0,
-                "assessed_at": datetime.now(timezone.utc).isoformat()
+                "estimated_cost_inr": 485000.0,
+                "assessed_at": datetime.now(timezone.utc).isoformat(),
+                "data_label": "[DEMO DATA - MULTI-HAZARD FUSION]"
             },
             {
-                "assessment_id": "RSK-20261030-02",
-                "segment_id": "RS-KOR-04",
-                "health_score": 38.0,
-                "failure_probability": 0.89,
-                "risk_level": "critical",
-                "recommended_action": "emergency_resurfacing",
+                "assessment_id": "RSK-CHD-2026-02",
+                "segment_id": "RS-CHD-SEC-22-011",
+                "segment_name": "Sector 22 Shastri Market Promenade",
+                "sector": "Sector 22",
+                "health_score": 54.0,
+                "failure_probability": 0.58,
+                "risk_level": "fair",
+                "recommended_action": "patching_required",
                 "hazard_factors": {
-                    "pothole_cluster_density": 0.91,
-                    "monsoon_drainage_risk": 0.85,
-                    "traffic_vibration_index": 0.75
+                    "pothole_cluster_density": 0.52,
+                    "monsoon_drainage_risk": 0.60,
+                    "traffic_vibration_index": 0.55
                 },
                 "contributing_hazards": [
-                    {"type": "Severe Alligator Cracks", "weight": 0.50},
-                    {"type": "Drainage Edge Collapse", "weight": 0.30},
-                    {"type": "Commercial Freight Traffic", "weight": 0.20}
+                    {"type": "Alligator Cracking Clusters (D10)", "weight": 0.50},
+                    {"type": "Pedestrian & Delivery Transit", "weight": 0.30},
+                    {"type": "Minor Surface Depressions", "weight": 0.20}
                 ],
-                "estimated_cost_inr": 420000.0,
-                "assessed_at": datetime.now(timezone.utc).isoformat()
+                "estimated_cost_inr": 175000.0,
+                "assessed_at": datetime.now(timezone.utc).isoformat(),
+                "data_label": "[DEMO DATA - MULTI-HAZARD FUSION]"
             }
         ]
 
-        self.repair_records: List[Dict[str, Any]] = [
+    def _load_chandigarh_segments(self) -> List[Dict[str, Any]]:
+        seg_paths = [
+            Path("backend/app/data/chandigarh_segments.json"),
+            Path("data/chandigarh_segments.json"),
+            Path(__file__).resolve().parent.parent / "data" / "chandigarh_segments.json"
+        ]
+        for p in seg_paths:
+            if p.exists():
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if data:
+                            return data
+                except Exception as e:
+                    print(f"Error loading {p}: {e}")
+
+        # Fallback minimal Chandigarh segments
+        return [
             {
-                "repair_id": "REP-20261030-01",
-                "segment_id": "RS-MG-01",
-                "contractor_name": "Karnataka Urban Infra Ltd.",
-                "status": "completed_unverified",
-                "before_image_url": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80",
-                "after_image_url": "https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80",
-                "ai_verification_score": 0.94,
-                "damage_cleared": True,
-                "verified_by_user_id": None,
-                "created_at": "2026-10-30T08:00:00Z",
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "segment_id": "RS-CHD-SEC-17-001",
+                "name": "Madhya Marg (Sector 17)",
+                "ward_id": "SEC-17",
+                "area_name": "Sector 17",
+                "geometry": {"type": "LineString", "coordinates": [[76.7760, 30.7450], [76.7820, 30.7445], [76.7885, 30.7440]]},
+                "length_meters": 1199.8,
+                "health_score": 74.0,
+                "status_category": "fair",
+                "hazard_count": 2,
+                "data_source": "OpenStreetMap Chandigarh [DEMO DATA]"
             },
             {
-                "repair_id": "REP-20261030-02",
-                "segment_id": "RS-ORR-02",
-                "contractor_name": "Apex Roadworks Corp",
-                "status": "verified_closed",
-                "before_image_url": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80",
-                "after_image_url": "https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80",
-                "ai_verification_score": 0.98,
-                "damage_cleared": True,
-                "verified_by_user_id": "USR-101",
-                "created_at": "2026-10-29T10:00:00Z",
-                "updated_at": "2026-10-30T09:30:00Z"
+                "segment_id": "RS-CHD-SEC-22-007",
+                "name": "Udyog Path (Sector 22)",
+                "ward_id": "SEC-22",
+                "area_name": "Sector 22",
+                "geometry": {"type": "LineString", "coordinates": [[76.7660, 30.7360], [76.7720, 30.7365], [76.7780, 30.7370]]},
+                "length_meters": 1150.0,
+                "health_score": 54.0,
+                "status_category": "fair",
+                "hazard_count": 4,
+                "data_source": "OpenStreetMap Chandigarh [DEMO DATA]"
+            },
+            {
+                "segment_id": "RS-CHD-SEC-34-013",
+                "name": "Sarovar Path (Sector 34)",
+                "ward_id": "SEC-34",
+                "area_name": "Sector 34",
+                "geometry": {"type": "LineString", "coordinates": [[76.7745, 30.7265], [76.7740, 30.7225], [76.7735, 30.7185]]},
+                "length_meters": 890.0,
+                "health_score": 84.5,
+                "status_category": "good",
+                "hazard_count": 0,
+                "data_source": "OpenStreetMap Chandigarh [DEMO DATA]"
+            },
+            {
+                "segment_id": "RS-CHD-IND-PH1-019",
+                "name": "Industrial Area Phase 1 Spine Road",
+                "ward_id": "IND-PH1",
+                "area_name": "Industrial Area Phase 1",
+                "geometry": {"type": "LineString", "coordinates": [[76.7950, 30.7060], [76.8040, 30.7055], [76.8130, 30.7050]]},
+                "length_meters": 1720.0,
+                "health_score": 36.5,
+                "status_category": "critical",
+                "hazard_count": 7,
+                "data_source": "OpenStreetMap Chandigarh [DEMO DATA]"
             }
         ]
+
+    def _load_chandigarh_observations(self) -> List[Dict[str, Any]]:
+        obs_paths = [
+            Path("data/chandigarh_demo_observations.json"),
+            Path("backend/app/data/chandigarh_demo_observations.json"),
+            Path(__file__).resolve().parent.parent.parent.parent / "data" / "chandigarh_demo_observations.json"
+        ]
+        for p in obs_paths:
+            if p.exists():
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if data:
+                            return data
+                except Exception:
+                    pass
+        return []
+
+    def _load_chandigarh_repairs(self) -> List[Dict[str, Any]]:
+        rep_paths = [
+            Path("data/chandigarh_demo_repairs.json"),
+            Path("backend/app/data/chandigarh_demo_repairs.json"),
+            Path(__file__).resolve().parent.parent.parent.parent / "data" / "chandigarh_demo_repairs.json"
+        ]
+        for p in rep_paths:
+            if p.exists():
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if data:
+                            return data
+                except Exception:
+                    pass
+        return []
 
 mock_store = MockDataStore()

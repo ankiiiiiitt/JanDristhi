@@ -43,3 +43,4 @@ class ObservationModel(BaseModel):
     detections: List[DetectionItem] = []
     linked_segment_id: Optional[str] = None
     captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+

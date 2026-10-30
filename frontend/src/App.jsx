@@ -4,6 +4,7 @@ import MetricCards from './components/MetricCards';
 import RoadMap from './components/RoadMap';
 import AnalyticsCharts from './components/AnalyticsCharts';
 import RepairAudit from './components/RepairAudit';
+import MobileCollector from './components/MobileCollector';
 import UploadModal from './components/UploadModal';
 import { fetchOverview, fetchRoadsGeoJSON, fetchObservations, fetchRepairs, checkSystemHealth } from './services/api';
 
@@ -128,6 +129,14 @@ export default function App() {
             onRefresh={loadAllData}
           />
         )}
+
+        {/* Tab 4: Android Chrome Mobile Collector */}
+        {activeTab === 'collector' && (
+          <MobileCollector
+            onUploadSuccess={handleUploadSuccess}
+            onRefresh={loadAllData}
+          />
+        )}
       </main>
 
       {/* Modal for Telemetry & Image Ingestion */}
@@ -144,3 +153,4 @@ export default function App() {
     </div>
   );
 }
+

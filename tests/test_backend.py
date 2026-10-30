@@ -44,7 +44,10 @@ def test_analytics_overview():
     assert "city_average_health_score" in data
 
 def test_risk_evaluate_segment():
-    response = client.post("/api/v1/risk/evaluate/RS-MG-01")
+    # Fetch first segment dynamically
+    geojson = client.get("/api/v1/roads/geojson").json()
+    first_seg = geojson["features"][0]["properties"]["segment_id"] if geojson.get("features") else "RS-CHD-SEC-17-001"
+    response = client.post(f"/api/v1/risk/evaluate/{first_seg}")
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -58,3 +61,4 @@ def test_list_repairs():
     body = response.json()
     assert body["success"] is True
     assert isinstance(body["data"], list)
+

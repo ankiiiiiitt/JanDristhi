@@ -22,3 +22,4 @@ class VehicleModel(BaseModel):
     status: VehicleStatus = VehicleStatus.ACTIVE
     last_known_location: GeoPoint
     last_active_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+

@@ -142,3 +142,4 @@ Before clicking **"Merge Pull Request"** on GitHub:
 - [ ] The module runs standalone without errors (`npm run build` or `pytest`).
 - [ ] At least one peer developer has reviewed and approved the PR.
 - [ ] Merge strategy: Use **"Squash and merge"** or standard non-fast-forward merge to keep git history clean.
+

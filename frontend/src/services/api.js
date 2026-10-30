@@ -5,7 +5,7 @@ import {
   MOCK_REPAIRS
 } from './mockData';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8199/api/v1';
 
 export let isBackendOnline = false;
 
@@ -161,3 +161,34 @@ export async function evaluateSegmentRisk(segmentId) {
     recommended_action: "emergency_resurfacing"
   };
 }
+
+export async function uploadCollectorSession(formData) {
+  try {
+    const res = await fetch(`${BASE_URL}/collector/upload-session`, {
+      method: "POST",
+      body: formData
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { success: true, data: json };
+    } else {
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Upload failed (Status ${res.status})` };
+    }
+  } catch (e) {
+    console.warn("Collector session upload failed:", e);
+    return { success: false, error: e.message || "Network error connecting to backend API" };
+  }
+}
+
+export async function fetchCollectorSessions() {
+  try {
+    const res = await fetch(`${BASE_URL}/collector/sessions`);
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || [];
+    }
+  } catch (e) {}
+  return [];
+}
+

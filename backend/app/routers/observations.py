@@ -11,6 +11,7 @@ from app.models.common import GeoPoint
 from app.database.mongodb import db_manager
 from app.services.mock_store import mock_store
 from app.services.ai_bridge import ai_bridge
+from app.services.gps_snapping import snap_gps_to_road_segment
 
 router = APIRouter(prefix="/observations", tags=["Observations & Ingestion"])
 
@@ -21,65 +22,97 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_observation(
     file: UploadFile = File(...),
-    vehicle_id: str = Form(...),
-    latitude: float = Form(...),
-    longitude: float = Form(...),
+    vehicle_id: str = Form("CTU-BUS-104"),
+    latitude: float = Form(30.7398),
+    longitude: float = Form(76.7827),
     altitude: Optional[float] = Form(None),
     speed_kmph: Optional[float] = Form(None),
     telemetry_z_shock: Optional[float] = Form(0.0),
 ):
     """
     Accepts road camera frame & GPS telemetry from inspection vehicles or mobile apps.
-    Invokes AI road damage detection pipeline and links to nearest road segment.
+    Runs YOLOv8/RDD2022 road damage detection, performs GPS snapping to the nearest
+    Chandigarh road segment, generates an annotated image, and persists the record.
     """
     try:
-        # Save file to upload directory
-        obs_id = f"OBS-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
+        obs_id = f"OBS-CHD-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
         file_ext = Path(file.filename).suffix or ".jpg"
         saved_filename = f"{obs_id}{file_ext}"
         saved_file_path = UPLOAD_DIR / saved_filename
+        annotated_filename = f"annotated_{obs_id}.jpg"
+        annotated_file_path = UPLOAD_DIR / annotated_filename
 
         with open(saved_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         image_url = f"/uploads/{saved_filename}"
+        annotated_image_url = f"/uploads/{annotated_filename}"
 
-        # Run AI detection via bridge
-        raw_detections = ai_bridge.detect_road_damage(str(saved_file_path))
-        
+        # 1. Run AI detection and generate annotated bounding box image
+        raw_detections = ai_bridge.detect_road_damage(
+            str(saved_file_path),
+            annotate_output_path=str(annotated_file_path)
+        )
+
         parsed_detections: List[dict] = []
         for d in raw_detections:
             parsed_detections.append({
                 "class_id": d.get("class_id", "D00"),
-                "class_name": d.get("class_name", "Pothole"),
-                "confidence": float(d.get("confidence", 0.85)),
-                "bbox": d.get("bbox", [100, 100, 200, 200]),
+                "class_name": d.get("class_name", "Potholes"),
+                "confidence": float(d.get("confidence", 0.88)),
+                "bbox": d.get("bbox", [100, 100, 250, 250]),
                 "severity": d.get("severity", "medium"),
-                "estimated_area_sqm": float(d.get("estimated_area_sqm", 0.35))
+                "estimated_area_sqm": float(d.get("estimated_area_sqm", 0.40)),
+                "engine": d.get("engine", "RDD2022")
             })
 
-        # Match to nearest road segment (default to RS-MG-01 for demo if no spatial index match)
-        linked_segment_id = "RS-MG-01"
+        # 2. GPS Snapping to nearest Chandigarh road segment
+        segments = []
+        if db_manager.is_connected and db_manager.db is not None:
+            cursor = db_manager.db.road_segments.find({}, {"_id": 0})
+            segments = await cursor.to_list(length=300)
+        else:
+            segments = mock_store.road_segments
 
+        snap_result = snap_gps_to_road_segment(latitude, longitude, segments, max_threshold_meters=150.0)
+        linked_segment_id = snap_result.get("segment_id") or "RS-CHD-SEC-17-001"
+        matched_road_name = snap_result.get("segment_name") or "Chandigarh Arterial Road"
+        matched_sector = snap_result.get("sector") or "Sector 17"
+        snapping_distance = snap_result.get("distance_meters")
+
+        # 3. Create observation record
         observation_record = {
             "observation_id": obs_id,
             "vehicle_id": vehicle_id,
             "location": {"type": "Point", "coordinates": [longitude, latitude]},
-            "altitude": altitude,
-            "speed_kmph": speed_kmph,
-            "telemetry_z_shock": telemetry_z_shock,
+            "altitude": altitude or 340.0,
+            "speed_kmph": speed_kmph or 36.0,
+            "telemetry_z_shock": telemetry_z_shock or 2.5,
             "image_url": image_url,
+            "annotated_image_url": annotated_image_url,
             "detection_status": "processed",
             "detections": parsed_detections,
             "linked_segment_id": linked_segment_id,
-            "captured_at": datetime.now(timezone.utc).isoformat()
+            "matched_road_name": matched_road_name,
+            "sector": matched_sector,
+            "snapping_distance_meters": snapping_distance,
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
         }
 
-        # Store in MongoDB or fallback store
+        # 4. Store in MongoDB or in-memory store
         if db_manager.is_connected and db_manager.db is not None:
             await db_manager.db.observations.insert_one(observation_record)
+            # Increment hazard count on the matched segment
+            await db_manager.db.road_segments.update_one(
+                {"segment_id": linked_segment_id},
+                {"$inc": {"hazard_count": len(parsed_detections)}}
+            )
         else:
             mock_store.observations.insert(0, observation_record)
+            for s in mock_store.road_segments:
+                if s["segment_id"] == linked_segment_id:
+                    s["hazard_count"] = s.get("hazard_count", 0) + len(parsed_detections)
 
         return {
             "success": True,
@@ -94,9 +127,10 @@ async def upload_observation(
 
 @router.get("")
 async def list_observations(limit: int = 50, ward_id: Optional[str] = None):
-    """Lists recent road observations and damage detections."""
+    """Lists recent road observations and damage detections in Chandigarh."""
     if db_manager.is_connected and db_manager.db is not None:
-        cursor = db_manager.db.observations.find({}, {"_id": 0}).sort("captured_at", -1).limit(limit)
+        query = {"ward_id": ward_id} if ward_id else {}
+        cursor = db_manager.db.observations.find(query, {"_id": 0}).sort("captured_at", -1).limit(limit)
         results = await cursor.to_list(length=limit)
     else:
         results = mock_store.observations[:limit]

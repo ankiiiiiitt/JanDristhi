@@ -16,3 +16,4 @@ async def get_health_status():
         "mock_mode": settings.MOCK_MODE or not db_manager.is_connected,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+

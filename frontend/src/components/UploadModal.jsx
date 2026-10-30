@@ -5,11 +5,11 @@ import { uploadObservation } from '../services/api';
 export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [vehicleId, setVehicleId] = useState("VEH-KA04-9122");
-  const [latitude, setLatitude] = useState("12.9716");
-  const [longitude, setLongitude] = useState("77.5946");
-  const [speed, setSpeed] = useState("36.5");
-  const [zShock, setZShock] = useState("3.4");
+  const [vehicleId, setVehicleId] = useState("CTU-BUS-104");
+  const [latitude, setLatitude] = useState("30.7408");
+  const [longitude, setLongitude] = useState("76.7825");
+  const [speed, setSpeed] = useState("34.5");
+  const [zShock, setZShock] = useState("3.8");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -153,17 +153,68 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
             </div>
           </div>
 
-          {/* Result Alert */}
+          {/* Result Alert & AI Detection Display */}
           {result && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1.5 text-xs text-emerald-300">
-              <div className="flex items-center space-x-2 font-semibold text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>AI Ingestion & Detection Successful!</span>
+            <div className="p-3.5 bg-slate-950 border border-emerald-500/30 rounded-xl space-y-2.5 text-xs">
+              <div className="flex items-center justify-between text-emerald-400 font-semibold border-b border-slate-800 pb-2">
+                <div className="flex items-center space-x-1.5">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>AI Detection & GPS Snapping Succeeded</span>
+                </div>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300">
+                  {result.observation_id}
+                </span>
               </div>
-              <p className="text-slate-300">
-                Detected: <b className="text-white">{result.detections?.[0]?.class_name || "Pothole"}</b> ({Math.round((result.detections?.[0]?.confidence || 0.9) * 100)}% confidence)
-              </p>
-              <p className="text-slate-400">Observation ID: {result.observation_id}</p>
+
+              {/* Annotated Image & BBox View */}
+              {(result.annotated_image_url || result.image_url) && (
+                <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-900">
+                  <div className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-1 bg-slate-800/80 flex justify-between">
+                    <span>Annotated Road Damage Frame</span>
+                    <span className="text-emerald-400">RDD2022 Verified</span>
+                  </div>
+                  <img
+                    src={result.annotated_image_url || result.image_url}
+                    alt="Annotated Road Detection"
+                    className="w-full max-h-48 object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Detected Classes Table */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-300">Detected Anomalies:</span>
+                {(result.detections || []).map((d, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-900 border border-slate-800 text-[11px]">
+                    <div>
+                      <span className="font-bold text-white">{d.class_id}: {d.class_name}</span>
+                      <span className="text-slate-400 ml-2">Conf: {Math.round(d.confidence * 100)}%</span>
+                      <span className="text-slate-400 ml-2">Area: {d.estimated_area_sqm} m²</span>
+                    </div>
+                    <div className="font-mono text-[10px] text-slate-400">
+                      BBox: [{d.bbox?.join(', ')}]
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* GPS Snapping Info */}
+              <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[11px] text-slate-300 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Snapped Road Segment:</span>
+                  <b className="text-emerald-300">{result.matched_road_name || result.linked_segment_id}</b>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Sector:</span>
+                  <span className="text-slate-200">{result.sector || "Chandigarh"}</span>
+                </div>
+                {result.snapping_distance_meters != null && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Distance from Road Axis:</span>
+                    <span className="font-mono text-emerald-400">{result.snapping_distance_meters} m (Snapped)</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -190,3 +241,4 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
     </div>
   );
 }
+
