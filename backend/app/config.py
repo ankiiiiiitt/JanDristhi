@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     AI_ENGINE_HOST: str = "127.0.0.1"
     AI_ENGINE_PORT: int = 8001
     AI_CONFIDENCE_THRESHOLD: float = 0.35
+    AI_MODEL_PATH: str = os.environ.get("AI_MODEL_PATH", "ai-engine/weights/best_road_damage.pt")
 
     # Storage – cloud deployments use /tmp/uploads (ephemeral but fine for demo)
     UPLOAD_STORAGE_DIR: str = os.environ.get("UPLOAD_STORAGE_DIR", "backend/uploads")

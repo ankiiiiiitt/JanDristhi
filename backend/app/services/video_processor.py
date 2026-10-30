@@ -130,14 +130,16 @@ class MobileCollectorVideoProcessor:
                 b64_data = kf.get("image_base64", "")
                 if "," in b64_data:
                     b64_data = b64_data.split(",", 1)[1]
-                try:
-                    img_bytes = base64.b64decode(b64_data)
-                    frame_path = session_dir / f"keyframe_{idx:04d}.jpg"
-                    with open(frame_path, "wb") as f:
-                        f.write(img_bytes)
-                    frames_with_times.append((t_ms, frame_path))
-                except Exception as e:
-                    logger.warning(f"Could not decode keyframe {idx}: {e}")
+                if b64_data.strip():
+                    try:
+                        img_bytes = base64.b64decode(b64_data)
+                        if len(img_bytes) > 100:  # Valid image payload
+                            frame_path = session_dir / f"keyframe_{idx:04d}.jpg"
+                            with open(frame_path, "wb") as f:
+                                f.write(img_bytes)
+                            frames_with_times.append((t_ms, frame_path))
+                    except Exception as e:
+                        logger.warning(f"Could not decode keyframe {idx}: {e}")
 
         # 2. If no client keyframes and video exists, extract from video
         if not frames_with_times and video_path and video_path.exists():

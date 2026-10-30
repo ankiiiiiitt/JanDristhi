@@ -24,11 +24,22 @@ class AIBridge:
 
             from detector import RoadDamageDetector
             from image_processor import ImageProcessor
-            self._ai_detector = RoadDamageDetector()
+            model_path = os.environ.get("AI_MODEL_PATH", "ai-engine/weights/best_road_damage.pt")
+            self._ai_detector = RoadDamageDetector(model_path=model_path)
             self._image_processor = ImageProcessor()
             logger.info("Direct AI RoadDamageDetector & ImageProcessor initialized in AIBridge.")
         except Exception as e:
             logger.warning(f"AI engine in-process initialization notice: {e}")
+
+    def get_status(self) -> Dict[str, Any]:
+        """Returns the health and model loading status of the AI engine."""
+        loaded = bool(self._ai_detector and getattr(self._ai_detector, "model_loaded", False))
+        m_path = getattr(self._ai_detector, "model_path", None) if self._ai_detector else None
+        return {
+            "ai_engine": "online",
+            "model_loaded": loaded,
+            "model_path": str(m_path) if m_path else None
+        }
 
     def detect_road_damage(self, image_path: str, annotate_output_path: str = None) -> List[Dict[str, Any]]:
         """
