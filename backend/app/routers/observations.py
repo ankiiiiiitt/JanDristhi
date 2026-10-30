@@ -14,6 +14,7 @@ from app.services.mock_store import mock_store
 from app.services.ai_bridge import ai_bridge
 from app.services.gps_snapping import snap_gps_to_road_segment
 from app.services.road_photo_validation import validate_road_photo
+from app.services.two_stage_validator import two_stage_pipeline
 
 router = APIRouter(prefix="/observations", tags=["Observations & Ingestion"])
 
@@ -198,12 +199,15 @@ async def upload_observation(
         with open(saved_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        accepted, validation_error, validation_meta = validate_road_photo(
-            saved_file_path, file.content_type, file.filename, return_metadata=True
+        # Stage 1: Validate whether the uploaded image contains an actual road surface
+        stage1_res = two_stage_pipeline.stage1_validator.validate(
+            saved_file_path, file.content_type, file.filename
         )
-        if not accepted:
+        if not stage1_res["is_valid_road"]:
             saved_file_path.unlink(missing_ok=True)
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=validation_error)
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=stage1_res["error_message"])
+
+        validation_meta = stage1_res.get("validation_metrics", {})
 
         image_sha256 = hashlib.sha256(saved_file_path.read_bytes()).hexdigest()
         deduplication_key = hashlib.sha256(
@@ -220,46 +224,18 @@ async def upload_observation(
         image_url = f"/uploads/{saved_filename}"
         annotated_image_url = f"/uploads/{annotated_filename}"
 
-        # 1. Run AI detection without fake fallbacks
-        raw_detections = ai_bridge.detect_road_damage(
-            str(saved_file_path),
-            annotate_output_path=str(annotated_file_path),
-            allow_fallback=False
-        )
+        # Stage 2: Road Damage Detection (Only executed for verified road surfaces)
+        stage2_res = two_stage_pipeline.stage2_detector.detect(saved_file_path)
+        parsed_detections = stage2_res.get("detections", [])
 
-        # If road has zero hazards, copy pristine original to annotated path
-        if not raw_detections and not annotated_file_path.exists():
+        # If road has defects, generate annotated image with bounding boxes
+        if parsed_detections and ai_bridge._image_processor:
+            try:
+                ai_bridge._image_processor.draw_detections(str(saved_file_path), parsed_detections, str(annotated_file_path))
+            except Exception as e:
+                shutil.copyfile(saved_file_path, annotated_file_path)
+        elif not annotated_file_path.exists():
             shutil.copyfile(saved_file_path, annotated_file_path)
-
-        # Correct RDD2022 4-class taxonomy:
-        # D00: Longitudinal Cracks, D10: Transverse Cracks, D20: Alligator Cracking, D40: Potholes
-        rdd_taxonomy = {
-            "D00": "Longitudinal Cracks",
-            "D10": "Transverse Cracks",
-            "D20": "Alligator Cracking",
-            "D40": "Potholes"
-        }
-
-        parsed_detections: List[dict] = []
-        for d in (raw_detections or []):
-            cid = d.get("class_id", "D40")
-            cname = rdd_taxonomy.get(cid, d.get("class_name", "Potholes"))
-            conf = float(d.get("confidence", 0.85))
-            bbox = d.get("bbox", [100, 100, 250, 250])
-            area_sqm = float(d.get("estimated_area_sqm", 0.35))
-            severity = d.get("severity", "medium")
-
-            # Validate confidence and bounding box sanity
-            if conf >= 0.35 and len(bbox) == 4 and (bbox[2] > bbox[0]) and (bbox[3] > bbox[1]):
-                parsed_detections.append({
-                    "class_id": cid,
-                    "class_name": cname,
-                    "confidence": round(conf, 2),
-                    "bbox": bbox,
-                    "severity": severity,
-                    "estimated_area_sqm": round(area_sqm, 2),
-                    "engine": d.get("engine", "RDD2022")
-                })
 
         # 2. Independent GPS & Road Snapping Verification
         is_valid_gps = (-90.0 <= latitude <= 90.0) and (-180.0 <= longitude <= 180.0) and not (latitude == 0.0 and longitude == 0.0)
@@ -301,20 +277,37 @@ async def upload_observation(
             # Citizen reports begin as pending_review until engineer confirms; survey runs auto-accepted
             report_status = "pending_review" if (vehicle_id.startswith("MOB-") or vehicle_id.startswith("CITIZEN-")) else "accepted"
 
-        # 3. Create observation record with actual model predictions and audit processing logs
+        # 3. Create observation record with two-stage validation and damage detection
         processing_logs = [
             {
                 "step": "pre_inference_admission",
+                "stage": 1,
                 "status": "passed",
                 "timestamp": now_iso,
-                "validation_meta": validation_meta
+                "validation_meta": stage1_res.get("validation_metrics", {})
+            },
+            {
+                "step": "stage1_road_surface_validation",
+                "stage": 1,
+                "status": "passed",
+                "timestamp": now_iso,
+                "validation_meta": stage1_res.get("validation_metrics", {})
             },
             {
                 "step": "ai_inference",
+                "stage": 2,
                 "status": "completed",
                 "timestamp": now_iso,
                 "detections_count": len(parsed_detections),
-                "model_engine": "YOLOv8-RDD2022 / CV Surface Analysis"
+                "model_engine": stage2_res.get("engine", "YOLOv8-RDD2022 / CV Surface Analysis")
+            },
+            {
+                "step": "stage2_damage_detection",
+                "stage": 2,
+                "status": stage2_res.get("status", "completed"),
+                "timestamp": now_iso,
+                "detections_count": len(parsed_detections),
+                "model_engine": stage2_res.get("engine", "YOLOv8-RDD2022 / CV Surface Analysis")
             },
             {
                 "step": "independent_gps_verification",
@@ -341,8 +334,10 @@ async def upload_observation(
             "is_hazard": is_hazard,
             "hazard_category": hazard_category,
             "report_source": "citizen" if vehicle_id.startswith("MOB-") or vehicle_id.startswith("CITIZEN-") else "survey",
+            "stage1_validation": stage1_res,
+            "stage2_damage_detection": stage2_res,
             "road_photo_validated": True,
-            "road_validation_engine": "YOLO road-damage detector",
+            "road_validation_engine": "YOLO-OpenCV Two-Stage Pipeline",
             "deduplication_key": deduplication_key,
             "image_sha256": image_sha256,
             "vehicle_id": vehicle_id,
@@ -515,3 +510,34 @@ async def list_observations(
         "count": len(results),
         "data": results
     }
+
+
+@router.post("/validate-image")
+async def validate_image_two_stage(file: UploadFile = File(...)):
+    """
+    Two-Stage Real Image Validation Endpoint:
+    - Stage 1: Road Surface Validation (rejects selfies, people-only images, indoor photos, unrelated objects).
+    - Stage 2: Road Damage Detection (runs YOLOv8 / CV road damage analysis only for valid road surfaces).
+    Returns separate, decoupled results for Stage 1 and Stage 2 without aborting with 422 on invalid images.
+    """
+    tmp_id = uuid.uuid4().hex[:8]
+    tmp_filename = f"val_{tmp_id}_{Path(file.filename or 'upload.jpg').name}"
+    tmp_path = UPLOAD_DIR / tmp_filename
+    try:
+        with open(tmp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        result = two_stage_pipeline.process(
+            tmp_path,
+            content_type=file.content_type,
+            filename=file.filename
+        )
+        return {
+            "success": True,
+            "stage1_road_validation": result["stage1_validation"],
+            "stage2_damage_detection": result["stage2_damage_detection"],
+            "final_decision": result["final_decision"]
+        }
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
