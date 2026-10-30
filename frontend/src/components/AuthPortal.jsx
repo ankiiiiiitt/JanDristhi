@@ -226,25 +226,23 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden select-none">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Main Container Card */}
-      <div className="w-full max-w-xl bg-[#0c1427]/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 space-y-6">
-        {onBack && <button onClick={onBack} className="text-xs text-slate-400 hover:text-white">← Back to JanDrishti</button>}
+    <div className="auth-surface min-h-screen bg-[#f7faf9] text-slate-900 flex flex-col relative overflow-hidden select-none">
+      <nav className="h-[76px] shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl"><div className="max-w-7xl h-full mx-auto px-5 sm:px-8 flex items-center justify-between"><button onClick={onBack} className="flex items-center gap-2"><span className="grid place-items-center size-9 rounded-xl bg-[#0d4d41] text-emerald-200"><Sparkles size={18} /></span><span className="font-extrabold tracking-tight text-xl">Jan<span className="text-emerald-700">Drishti</span></span></button>{onBack && <button onClick={onBack} className="text-sm font-semibold text-slate-600 hover:text-emerald-700">← Back to home</button>}</div></nav>
+      <div className="absolute top-32 -left-24 w-96 h-96 bg-emerald-200/35 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 -right-24 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
+      <div className="flex-1 w-full flex justify-center items-center p-4 sm:p-8 relative">
+      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl shadow-emerald-950/5 relative z-10 space-y-6">
         
         {/* JanDrishti Logo & Header */}
         <div className="text-center space-y-1.5">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs text-emerald-800">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-semibold">AI Urban Infrastructure Intelligence</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Jan<span className="text-emerald-400">Drishti</span>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            Welcome to Jan<span className="text-emerald-700">Drishti</span>
           </h1>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
             Choose your access role to proceed into the field mobile app or the engineering GIS studio.
           </p>
         </div>
@@ -253,7 +251,7 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
             STEP 1: DISTINCT ROLE SELECTION (Citizen vs Developer)
            ───────────────────────────────────────────────────────────── */}
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2 text-center">
             Select Portal Role
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -265,20 +263,20 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
               }}
               className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col items-center text-center space-y-1.5 relative ${
                 selectedRole === 'citizen'
-                  ? 'border-emerald-500 bg-emerald-950/20 shadow-lg shadow-emerald-500/15'
-                  : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 opacity-70 hover:opacity-100'
+                  ? 'border-emerald-600 bg-emerald-50 shadow-sm shadow-emerald-500/10'
+                  : 'border-slate-200 hover:border-emerald-300 bg-white'
               }`}
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                selectedRole === 'citizen' ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'
+                selectedRole === 'citizen' ? 'bg-emerald-700 text-white font-bold' : 'bg-slate-100 text-slate-500'
               }`}>
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Citizen / Field User</p>
-                <p className="text-[10px] text-slate-400">Mobile Phone View</p>
+                <p className="text-xs font-bold text-slate-900">Citizen / Field User</p>
+                <p className="text-[10px] text-slate-500">Mobile Phone View</p>
               </div>
-              <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                 Pothole Reporting
               </span>
             </div>
@@ -291,20 +289,20 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
               }}
               className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col items-center text-center space-y-1.5 relative ${
                 selectedRole === 'developer'
-                  ? 'border-purple-500 bg-purple-950/20 shadow-lg shadow-purple-500/15'
-                  : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 opacity-70 hover:opacity-100'
+                  ? 'border-emerald-600 bg-emerald-50 shadow-sm shadow-emerald-500/10'
+                  : 'border-slate-200 hover:border-emerald-300 bg-white'
               }`}
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                selectedRole === 'developer' ? 'bg-purple-600 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                selectedRole === 'developer' ? 'bg-[#145547] text-white font-bold' : 'bg-slate-100 text-slate-500'
               }`}>
                 <Monitor className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Municipal Engineer</p>
-                <p className="text-[10px] text-slate-400">Desktop GIS Studio</p>
+                <p className="text-xs font-bold text-slate-900">Municipal Engineer</p>
+                <p className="text-[10px] text-slate-500">Desktop GIS Studio</p>
               </div>
-              <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+              <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                 YOLOv8 & Audits
               </span>
             </div>
@@ -314,7 +312,7 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
         {/* ─────────────────────────────────────────────────────────────
             STEP 2: LOGIN / SIGNUP TOGGLE
            ───────────────────────────────────────────────────────────── */}
-        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
           <button
             type="button"
             onClick={() => {
@@ -324,9 +322,9 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
             className={`flex-1 py-1.5 rounded-lg font-bold transition-all ${
               authMode === 'login'
                 ? selectedRole === 'citizen'
-                  ? 'bg-emerald-500 text-slate-950 shadow'
-                  : 'bg-purple-600 text-white shadow'
-                : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#145547] text-white shadow'
+                  : 'bg-[#145547] text-white shadow'
+                : 'text-slate-500 hover:text-emerald-800'
             }`}
           >
             Sign In ({selectedRole === 'citizen' ? 'Citizen' : 'Engineer'})
@@ -340,9 +338,9 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
             className={`flex-1 py-1.5 rounded-lg font-bold transition-all ${
               authMode === 'signup'
                 ? selectedRole === 'citizen'
-                  ? 'bg-emerald-500 text-slate-950 shadow'
-                  : 'bg-purple-600 text-white shadow'
-                : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#145547] text-white shadow'
+                  : 'bg-[#145547] text-white shadow'
+                : 'text-slate-500 hover:text-emerald-800'
             }`}
           >
             Create New Account
@@ -643,9 +641,7 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
             type="submit"
             disabled={loading}
             className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-[0.99] disabled:opacity-50 ${
-              selectedRole === 'citizen'
-                ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
-                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+              'bg-[#145547] hover:bg-[#0d4339] text-white shadow-emerald-950/15'
             }`}
           >
             {loading ? (
@@ -695,6 +691,7 @@ export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBac
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );

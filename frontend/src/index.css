@@ -45,3 +45,19 @@
 .leaflet-control-attribution a:hover {
   color: #7dd3fc !important;
 }
+
+/* Public-auth surface: preserves the existing form behaviour while sharing the
+   light, forest-green visual language of the JanDrishti landing page. */
+.auth-surface label { color: #334155 !important; }
+.auth-surface input {
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / .04);
+}
+.auth-surface input::placeholder { color: #94a3b8 !important; }
+.auth-surface input:focus { border-color: #16705b !important; box-shadow: 0 0 0 3px rgb(22 112 91 / .12); }
+.auth-surface [class*="text-purple"], .auth-surface [class*="text-emerald-300"], .auth-surface [class*="text-emerald-400"] { color: #176a56 !important; }
+.auth-surface [class*="bg-purple"], .auth-surface [class*="bg-slate-900"] { background-color: #f0fdf6 !important; }
+.auth-surface [class*="border-purple"], .auth-surface [class*="border-slate-800"] { border-color: #bbddcf !important; }
+.auth-surface [class*="hover:bg-purple"], .auth-surface [class*="hover:bg-slate-800"]:hover { background-color: #dcf4e8 !important; }
