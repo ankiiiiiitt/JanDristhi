@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import UnifiedAppView from './components/UnifiedAppView';
+import MobileAppExperience from './components/MobileAppExperience';
 import UploadModal from './components/UploadModal';
 import { fetchOverview, fetchRoadsGeoJSON, fetchObservations, fetchRepairs, checkSystemHealth } from './services/api';
 
@@ -54,7 +54,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans select-none">
-      <UnifiedAppView
+      <MobileAppExperience
         overview={overview}
         roadsGeoJson={roadsGeoJson}
         observations={observations}
