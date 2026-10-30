@@ -119,3 +119,4 @@ def test_observations_contain_created_at():
     for obs in data["data"]:
         assert "created_at" in obs
         assert obs["created_at"] is not None
+

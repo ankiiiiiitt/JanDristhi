@@ -94,7 +94,19 @@ class TestAuthWorkflow(unittest.TestCase):
             }
         )
         self.assertEqual(good_reg.status_code, 201)
+        dev_token = good_reg.json()["access_token"]
         self.assertEqual(good_reg.json()["user"]["role"], "developer")
+
+        # Verify /me endpoint with developer token
+        me_res = client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {dev_token}"}
+        )
+        self.assertEqual(me_res.status_code, 200)
+        me_data = me_res.json()
+        self.assertEqual(me_data["email"], "lead.engineer@jandrishti.in")
+        self.assertEqual(me_data["role"], "developer")
+        self.assertEqual(me_data["full_name"], "Lead Engineer")
 
 
 if __name__ == "__main__":

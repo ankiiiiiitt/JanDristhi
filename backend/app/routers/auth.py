@@ -283,13 +283,35 @@ async def login(credentials: UserLogin):
 @router.get("/me")
 async def get_current_user_profile(user_claims: dict = Depends(get_current_user_from_token)):
     """Returns profile for currently active authenticated user session."""
-    user_id = user_claims.get("user_id", "USR-101")
-    email = user_claims.get("sub", "officer@jandrishti.gov.in")
+    user_id = user_claims.get("user_id")
+    email = user_claims.get("sub")
     role = user_claims.get("role", UserRole.MUNICIPAL_OFFICER.value)
 
+    user = None
+    if db_manager.is_connected and db_manager.db is not None:
+        user = await db_manager.db.users.find_one(
+            {"$or": [{"user_id": user_id}, {"email": email}]},
+            {"_id": 0, "hashed_password": 0}
+        )
+    else:
+        user = next(
+            (u for u in mock_store.users if (user_id and u.get("user_id") == user_id) or (email and u.get("email") == email)),
+            None
+        )
+
+    if user:
+        return {
+            "user_id": user.get("user_id", user_id or "USR-101"),
+            "email": user.get("email", email or "officer@jandrishti.gov.in"),
+            "phone": user.get("phone"),
+            "full_name": user.get("full_name", "Authenticated User"),
+            "role": user.get("role", role),
+            "ward_id": user.get("ward_id", "WARD-174")
+        }
+
     return {
-        "user_id": user_id,
-        "email": email,
+        "user_id": user_id or "USR-101",
+        "email": email or "officer@jandrishti.gov.in",
         "full_name": "Authenticated User",
         "role": role,
         "ward_id": "WARD-174"
