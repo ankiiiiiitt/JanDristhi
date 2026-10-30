@@ -123,6 +123,7 @@ export default function App() {
           observations={observations}
           onOpenUpload={() => setIsModalOpen(true)}
           onSwitchToDeveloper={() => setActivePlatform('developer')}
+          onUploadSuccess={handleUploadSuccess}
         />
       )}
 

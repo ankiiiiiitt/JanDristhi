@@ -33,9 +33,13 @@ import {
   LogOut,
   Maximize2,
   ShieldCheck,
-  Check
+  Check,
+  UploadCloud,
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import RoadMap from './RoadMap';
+import { uploadObservation } from '../services/api';
 
 export default function MobileAppExperience({
   overview,
@@ -78,6 +82,10 @@ export default function MobileAppExperience({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingSaved, setRecordingSaved] = useState(false);
   const [photoFlash, setPhotoFlash] = useState(false);
+  const [photoCaptured, setPhotoCaptured] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccessData, setUploadSuccessData] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   const [cameraStream, setCameraStream] = useState(null);
   const userVideoRef = useRef(null);
 
@@ -98,6 +106,10 @@ export default function MobileAppExperience({
   const toggleRecording = async () => {
     if (recordMode === 'photo') {
       setPhotoFlash(true);
+      setPhotoCaptured(true);
+      setRecordingSaved(false);
+      setUploadSuccessData(null);
+      setUploadError(null);
       setTimeout(() => setPhotoFlash(false), 300);
       return;
     }
@@ -109,12 +121,17 @@ export default function MobileAppExperience({
       }
       setIsRecording(false);
       setRecordingSaved(true);
+      setUploadSuccessData(null);
+      setUploadError(null);
       return;
     }
 
     // Reset and start recording
     setRecordingSeconds(0);
     setRecordingSaved(false);
+    setPhotoCaptured(false);
+    setUploadSuccessData(null);
+    setUploadError(null);
     setIsRecording(true);
 
     try {
@@ -130,6 +147,34 @@ export default function MobileAppExperience({
       }
     } catch (e) {
       console.warn("Camera access failed or running in preview mode:", e);
+    }
+  };
+
+  const handleQuickUpload = async () => {
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      const imgRes = await fetch('/images/roads/road_pothole_d00.jpg');
+      const blob = await imgRes.blob();
+      formData.append('file', blob, 'road_hazard_recording.jpg');
+      formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CTU-BUS-104');
+      formData.append('latitude', '30.7450');
+      formData.append('longitude', '76.7760');
+      formData.append('speed_kmph', '34.5');
+      formData.append('telemetry_z_shock', '3.1');
+
+      const res = await uploadObservation(formData);
+      if (res.success && res.data) {
+        setUploadSuccessData(res.data);
+      } else {
+        setUploadError('Upload failed. Please check backend connection.');
+      }
+    } catch (err) {
+      console.error('Quick upload error:', err);
+      setUploadError(err.message || 'Network error uploading hazard');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -730,7 +775,7 @@ export default function MobileAppExperience({
                       ) : recordingSaved && recordingSeconds > 0 ? (
                         <span className="text-emerald-400 font-bold flex items-center justify-center space-x-1.5">
                           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                          <span>Saved ({formatTime(recordingSeconds)}) • Tap button to record again</span>
+                          <span>Recorded ({formatTime(recordingSeconds)}) • Ready to Upload</span>
                         </span>
                       ) : (
                         <span className="text-slate-400 font-medium flex items-center justify-center space-x-1.5">
@@ -741,10 +786,126 @@ export default function MobileAppExperience({
                     ) : (
                       <span className="text-slate-300 font-medium flex items-center justify-center space-x-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <span>Photo Mode • Tap shutter button to capture</span>
+                        <span>{photoCaptured ? "Photo Snapped • Ready to Upload" : "Photo Mode • Tap shutter button to capture"}</span>
                       </span>
                     )}
                   </div>
+
+                  {/* POST-RECORDING / POST-PHOTO ACTION PANEL WITH DIRECT UPLOAD */}
+                  {((recordingSaved && recordingSeconds > 0) || photoCaptured) && (
+                    <div className="bg-slate-900/95 border border-emerald-500/30 rounded-2xl p-3.5 space-y-3 shadow-2xl backdrop-blur animate-in fade-in slide-in-from-bottom-2 duration-200 mt-2">
+                      {uploadSuccessData ? (
+                        <div className="space-y-2 text-center py-1">
+                          <div className="inline-flex items-center space-x-1.5 text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>Road Hazard Uploaded & Logged!</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300">
+                            Observation ID: <span className="font-mono text-emerald-300 font-semibold">{uploadSuccessData.observation_id}</span>
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            Location: {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
+                          </p>
+                          <div className="flex items-center space-x-2 pt-1">
+                            <button
+                              onClick={() => setUserTab('map')}
+                              className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow"
+                            >
+                              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>View on Map</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRecordingSaved(false);
+                                setPhotoCaptured(false);
+                                setRecordingSeconds(0);
+                                setUploadSuccessData(null);
+                              }}
+                              className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-lg"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              <span>New Inspection</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
+                            <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>
+                                {recordMode === 'video' ? `Session (${formatTime(recordingSeconds)})` : 'Photo Snapshot'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-bold border border-rose-500/30">
+                              Pothole (D00) · 87% Conf.
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="w-3 h-3 text-emerald-400" />
+                              <span>Sector 17 (30.745°N, 76.776°E)</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Activity className="w-3 h-3 text-amber-400" />
+                              <span>36 km/h • 2.8g Z-Shock</span>
+                            </div>
+                          </div>
+
+                          {uploadError && (
+                            <p className="text-[10px] text-rose-400 text-center font-medium bg-rose-500/10 py-1 rounded">
+                              {uploadError}
+                            </p>
+                          )}
+
+                          <div className="space-y-2 pt-0.5">
+                            <button
+                              onClick={handleQuickUpload}
+                              disabled={isUploading}
+                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                                  <span>Uploading & Snapping to Road...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UploadCloud className="w-4 h-4 text-slate-950" />
+                                  <span>Upload & Log Hazard to JanDrishti</span>
+                                </>
+                              )}
+                            </button>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setRecordingSaved(false);
+                                  setPhotoCaptured(false);
+                                  setRecordingSeconds(0);
+                                  setUploadError(null);
+                                }}
+                                disabled={isUploading}
+                                className="flex-1 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-[11px] font-semibold transition-all flex items-center justify-center space-x-1"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Discard</span>
+                              </button>
+                              <button
+                                onClick={onOpenUpload}
+                                disabled={isUploading}
+                                className="flex-1 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 text-[11px] font-semibold transition-all flex items-center justify-center space-x-1 border border-slate-700/50"
+                              >
+                                <Sliders className="w-3 h-3" />
+                                <span>Edit Telemetry</span>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
