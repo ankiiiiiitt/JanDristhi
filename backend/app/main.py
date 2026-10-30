@@ -37,9 +37,18 @@ app = FastAPI(
 )
 
 # CORS Middleware
+raw_origins = [o for o in settings.BACKEND_CORS_ORIGINS if "*" not in o]
+explicit_origins = list(set(raw_origins + [
+    "https://frontend-three-rosy-80.vercel.app",
+    "http://localhost:5199",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS + ["*"],
+    allow_origins=explicit_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|https://.*\.railway\.app|http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

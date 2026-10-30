@@ -11,13 +11,13 @@ export let isBackendOnline = false;
 
 export async function checkSystemHealth() {
   try {
-    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       isBackendOnline = true;
       return await res.json();
     }
   } catch (err) {
-    // Backend offline
+    // Backend offline or cold starting
   }
   isBackendOnline = false;
   return { status: "offline", mock_mode: true };
@@ -25,7 +25,7 @@ export async function checkSystemHealth() {
 
 export async function fetchOverview() {
   try {
-    const res = await fetch(`${BASE_URL}/analytics/overview`, { signal: AbortSignal.timeout(2500) });
+    const res = await fetch(`${BASE_URL}/analytics/overview`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = await res.json();
       isBackendOnline = true;
@@ -39,7 +39,7 @@ export async function fetchOverview() {
 
 export async function fetchRoadsGeoJSON() {
   try {
-    const res = await fetch(`${BASE_URL}/roads/geojson`, { signal: AbortSignal.timeout(2500) });
+    const res = await fetch(`${BASE_URL}/roads/geojson`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = await res.json();
       isBackendOnline = true;
@@ -51,9 +51,14 @@ export async function fetchRoadsGeoJSON() {
   return { data: MOCK_ROADS_GEOJSON, isMock: true };
 }
 
-export async function fetchObservations() {
+export async function fetchObservations(filters = {}) {
   try {
-    const res = await fetch(`${BASE_URL}/observations`, { signal: AbortSignal.timeout(2500) });
+    const query = new URLSearchParams();
+    if (filters.sector) query.set("sector", filters.sector);
+    if (filters.severity) query.set("severity", filters.severity);
+    if (filters.detection_status) query.set("detection_status", filters.detection_status);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    const res = await fetch(`${BASE_URL}/observations${qs}`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = await res.json();
       isBackendOnline = true;
@@ -109,9 +114,13 @@ export async function uploadObservation(formData) {
   };
 }
 
-export async function fetchRepairs() {
+export async function fetchRepairs(filters = {}) {
   try {
-    const res = await fetch(`${BASE_URL}/repairs`, { signal: AbortSignal.timeout(2500) });
+    const query = new URLSearchParams();
+    if (filters.status) query.set("status", filters.status);
+    if (filters.sector) query.set("sector", filters.sector);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    const res = await fetch(`${BASE_URL}/repairs${qs}`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = await res.json();
       return { data: json.data, isMock: false };
@@ -183,12 +192,36 @@ export async function uploadCollectorSession(formData) {
 
 export async function fetchCollectorSessions() {
   try {
-    const res = await fetch(`${BASE_URL}/collector/sessions`);
+    const res = await fetch(`${BASE_URL}/collector/sessions`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = await res.json();
       return json.data || [];
     }
   } catch (e) {}
   return [];
+}
+
+export async function fetchReports() {
+  try {
+    const res = await fetch(`${BASE_URL}/reports`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || [];
+    }
+  } catch (e) {}
+  return [];
+}
+
+export async function generatePdfReport(sector = null) {
+  const qs = sector ? `?sector=${encodeURIComponent(sector)}` : '';
+  const res = await fetch(`${BASE_URL}/reports/generate/pdf${qs}`, { signal: AbortSignal.timeout(15000) });
+  if (res.ok) {
+    return await res.json();
+  }
+  throw new Error("Failed to generate PDF report");
+}
+
+export function getReportDownloadUrl(filename) {
+  return `${BASE_URL}/reports/download/${filename}`;
 }
 

@@ -67,10 +67,11 @@ class MongoDBManager:
 
         try:
             logger.info("Connecting to MongoDB Atlas...")
-            # Set short server selection timeout for responsive startup during local dev
+            # Use responsive timeout for local dev, elevated timeout for Atlas TLS connection
+            timeout_ms = 5000 if settings.ENVIRONMENT == "production" or "mongodb+srv" in settings.MONGODB_URI else 2500
             self.client = AsyncIOMotorClient(
                 settings.MONGODB_URI,
-                serverSelectionTimeoutMS=2500,
+                serverSelectionTimeoutMS=timeout_ms,
                 maxPoolSize=settings.MONGODB_MAX_POOL_SIZE,
                 minPoolSize=settings.MONGODB_MIN_POOL_SIZE
             )
