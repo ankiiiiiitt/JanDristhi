@@ -343,21 +343,23 @@ export default function UserMobileApp({
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col items-center justify-start p-0 sm:py-6 sm:px-4">
-      {/* Top Banner to switch to Developer Dashboard */}
-      <div className="w-full max-w-md bg-[#0c1427] border-b sm:border border-slate-800 sm:rounded-2xl p-2.5 mb-2 sm:mb-4 flex items-center justify-between shadow-xl z-30">
-        <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold text-white">Citizen & Field Mobile App</span>
-        </div>
+      {/* Top Banner to switch to Developer Dashboard (ONLY accessible by Engineer/Developer role) */}
+      {onSwitchToDeveloper && currentUser?.role === 'developer' && (
+        <div className="w-full max-w-md bg-[#0c1427] border-b sm:border border-slate-800 sm:rounded-2xl p-2.5 mb-2 sm:mb-4 flex items-center justify-between shadow-xl z-30">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-bold text-white">Citizen Field Mobile Preview</span>
+          </div>
 
-        <button
-          onClick={onSwitchToDeveloper}
-          className="text-xs px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center space-x-1.5 shadow-md shadow-purple-600/30 transition-transform active:scale-95"
-        >
-          <span>Switch to Developer (Laptop)</span>
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
+          <button
+            onClick={onSwitchToDeveloper}
+            className="text-xs px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center space-x-1.5 shadow-md shadow-purple-600/30 transition-transform active:scale-95"
+          >
+            <span>Back to Engineer Studio</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ── PHONE SHELL CONTAINER ── */}
       <div className="w-full max-w-md bg-[#0b1120] sm:border-4 sm:border-slate-800 sm:rounded-[40px] shadow-2xl flex flex-col min-h-screen sm:min-h-[780px] sm:max-h-[850px] relative overflow-hidden ring-1 ring-slate-700/50">

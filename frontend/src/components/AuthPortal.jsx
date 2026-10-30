@@ -698,3 +698,4 @@ export default function AuthPortal({ onAuthSuccess }) {
     </div>
   );
 }
+

@@ -127,43 +127,52 @@ export default function App() {
         <div className="flex items-center space-x-2">
           <span className="font-extrabold text-white text-sm">Jan<span className="text-emerald-400">Drishti</span></span>
           <span className="text-slate-500 hidden sm:inline">|</span>
-          <span className="text-slate-400 text-[11px] hidden md:inline">Active Portal:</span>
+          <span className="text-slate-400 text-[11px] hidden md:inline">Portal:</span>
         </div>
 
-        {/* Dual Mode Switcher: Developer (Laptop Web UI) vs User (Field Mobile Phone) */}
-        <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 p-1 rounded-xl">
-          <button
-            onClick={() => {
-              setActivePlatform('developer');
-              localStorage.setItem('jandrishti_active_platform', 'developer');
-            }}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
-              activePlatform === 'developer'
-                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Monitor className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Developer / GIS Studio</span>
-            <span className="sm:hidden">Dev UI</span>
-          </button>
+        {/* ROLE-BASED ACCESS CONTROL (RBAC) */}
+        {currentUser.role === 'citizen' ? (
+          /* CITIZEN PORTAL BADGE: Citizen CANNOT switch to or access Developer/Engineer UI */
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 font-bold text-xs shadow-sm">
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Citizen Field Inspection Mode</span>
+          </div>
+        ) : (
+          /* DEVELOPER / MUNICIPAL ENGINEER CONTROLS */
+          <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 p-1 rounded-xl">
+            <button
+              onClick={() => {
+                setActivePlatform('developer');
+                localStorage.setItem('jandrishti_active_platform', 'developer');
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
+                activePlatform === 'developer'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Monitor className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Engineer / GIS Studio</span>
+              <span className="sm:hidden">Studio</span>
+            </button>
 
-          <button
-            onClick={() => {
-              setActivePlatform('user');
-              localStorage.setItem('jandrishti_active_platform', 'user');
-            }}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
-              activePlatform === 'user'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Citizen / Field Mobile</span>
-            <span className="sm:hidden">Mobile UI</span>
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                setActivePlatform('user');
+                localStorage.setItem('jandrishti_active_platform', 'user');
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
+                activePlatform === 'user'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Field Mobile Preview</span>
+              <span className="sm:hidden">Mobile</span>
+            </button>
+          </div>
+        )}
 
         {/* Authenticated User Profile Pill & Logout Button */}
         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -193,10 +202,22 @@ export default function App() {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          ACTIVE VIEW RENDERING
+          ACTIVE VIEW RENDERING (CITIZEN USERS ARE LOCKED TO MOBILE APP)
          ───────────────────────────────────────────────────────────── */}
-      {activePlatform === 'developer' ? (
-        // 1. DEVELOPER LAPTOP-BASED EXPERIENCE (Full Width Desktop Dashboard, GIS Map, Studio, Auditing)
+      {currentUser.role === 'citizen' || activePlatform === 'user' ? (
+        // 1. CITIZEN FIELD USER EXPERIENCE
+        <UserMobileApp
+          overview={overview}
+          roadsGeoJson={roadsGeoJson}
+          observations={observations}
+          onOpenUpload={() => setIsModalOpen(true)}
+          onSwitchToDeveloper={currentUser.role === 'developer' ? () => setActivePlatform('developer') : null}
+          onUploadSuccess={handleUploadSuccess}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
+      ) : (
+        // 2. DEVELOPER / MUNICIPAL ENGINEER EXPERIENCE (PROTECTED - CITIZENS CANNOT ACCESS)
         <UnifiedAppView
           overview={overview}
           roadsGeoJson={roadsGeoJson}
@@ -204,21 +225,6 @@ export default function App() {
           repairs={repairs}
           onRefresh={loadAllData}
           onOpenUpload={() => setIsModalOpen(true)}
-          currentUser={currentUser}
-          onLogout={handleLogout}
-        />
-      ) : (
-        // 2. USER MOBILE PHONE EXPERIENCE (Field monitoring, Live Record camera, Map, Reports)
-        <UserMobileApp
-          overview={overview}
-          roadsGeoJson={roadsGeoJson}
-          observations={observations}
-          onOpenUpload={() => setIsModalOpen(true)}
-          onSwitchToDeveloper={() => {
-            setActivePlatform('developer');
-            localStorage.setItem('jandrishti_active_platform', 'developer');
-          }}
-          onUploadSuccess={handleUploadSuccess}
           currentUser={currentUser}
           onLogout={handleLogout}
         />
