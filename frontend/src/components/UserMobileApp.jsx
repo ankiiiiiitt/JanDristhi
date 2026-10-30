@@ -47,16 +47,26 @@ export default function UserMobileApp({
   observations,
   onOpenUpload,
   onSwitchToDeveloper,
-  onUploadSuccess
+  onUploadSuccess,
+  currentUser: propCurrentUser = null,
+  onLogout = null
 }) {
   // Auth state: 'login' | 'signup' | 'app'
   const [authScreen, setAuthScreen] = useState('app');
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Rohit Kumar',
-    email: 'rohit.kumar@chandigarh.gov.in',
-    phone: '+91 98765 43210',
-    avatar: 'R'
+  const [currentUser, setCurrentUser] = useState(() => {
+    return propCurrentUser || {
+      name: 'Rohit Kumar',
+      email: 'rohit@jandrishti.in',
+      phone: '+91 98765 43210',
+      avatar: 'R'
+    };
   });
+
+  useEffect(() => {
+    if (propCurrentUser) {
+      setCurrentUser(propCurrentUser);
+    }
+  }, [propCurrentUser]);
 
   // Login & Signup Form states
   const [loginEmail, setLoginEmail] = useState('rohit@jandrishti.in');
@@ -558,11 +568,22 @@ export default function UserMobileApp({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
-                <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-emerald-400'}`} />
-                <span className="font-semibold max-w-[120px] truncate">{userCoords.city || 'Chandigarh'}</span>
-                <span className="text-slate-600">•</span>
-                <span className="text-slate-400">{userCoords.isReal ? 'Live GPS' : '28°C Clear'}</span>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
+                  <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-emerald-400'}`} />
+                  <span className="font-semibold max-w-[95px] truncate">{userCoords.city || 'Chandigarh'}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">{userCoords.isReal ? 'Live GPS' : '28°C'}</span>
+                </div>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 transition-colors"
+                    title="Logout & Return to Login Portal"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1051,10 +1072,13 @@ export default function UserMobileApp({
                   </div>
 
                   <button
-                    onClick={() => setAuthScreen('login')}
-                    className="w-full py-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-bold"
+                    onClick={() => {
+                      if (onLogout) onLogout();
+                      else setAuthScreen('login');
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-colors"
                   >
-                    Logout
+                    Logout / Switch Account
                   </button>
                 </div>
               )}

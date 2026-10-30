@@ -244,3 +244,70 @@ export function getReportDownloadUrl(filename) {
   return `${BASE_URL}/reports/download/${filename}`;
 }
 
+export async function loginUser(identifier, password) {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, data };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.detail || 'Invalid credentials' };
+  } catch (e) {
+    return { success: false, error: e.message || 'Network connection failed' };
+  }
+}
+
+export async function signupCitizen({ fullName, phone, email, password }) {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/signup/citizen`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: fullName,
+        phone,
+        email: email || undefined,
+        password
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, data };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.detail || 'Citizen registration failed' };
+  } catch (e) {
+    return { success: false, error: e.message || 'Network connection failed' };
+  }
+}
+
+export async function signupDeveloper({ fullName, email, password, inviteCode }) {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/signup/developer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: fullName,
+        email,
+        password,
+        invite_code: inviteCode || 'HACKATHON-2026'
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, data };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.detail || 'Developer registration failed' };
+  } catch (e) {
+    return { success: false, error: e.message || 'Network connection failed' };
+  }
+}
+

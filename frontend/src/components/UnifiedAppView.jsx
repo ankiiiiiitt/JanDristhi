@@ -42,7 +42,8 @@ import {
   Video,
   UploadCloud,
   Check,
-  AlertCircle
+  AlertCircle,
+  LogOut
 } from 'lucide-react';
 import RoadMap from './RoadMap';
 import MobileCollector from './MobileCollector';
@@ -53,7 +54,9 @@ export default function UnifiedAppView({
   observations,
   repairs,
   onRefresh,
-  onOpenUpload
+  onOpenUpload,
+  currentUser = null,
+  onLogout = null
 }) {
   const [activeNav, setActiveNav] = useState('dashboard');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -364,6 +367,30 @@ export default function UnifiedAppView({
               <Camera className="h-3.5 w-3.5" />
               <span>Report Hazard</span>
             </button>
+
+            {/* Engineer Profile & Quick Logout */}
+            <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
+              <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-purple-950/40 border border-purple-800/40 text-xs">
+                <span className="w-5 h-5 rounded-full bg-purple-600 font-bold text-[10px] flex items-center justify-center text-white">
+                  {currentUser?.avatar || 'E'}
+                </span>
+                <span className="font-semibold text-purple-200 hidden md:inline">
+                  {currentUser?.name || 'Er. Vikram Sharma'}
+                </span>
+                <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-semibold">
+                  Engineer
+                </span>
+              </div>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 border border-slate-700/80 text-slate-300 transition-colors"
+                  title="Logout & Switch Role Portal"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
