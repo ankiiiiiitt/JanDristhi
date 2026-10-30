@@ -17,7 +17,17 @@ def test_health_endpoint():
     data = response.json()
     assert data["status"] == "healthy"
     assert "database" in data
+    assert "database_storage_engine" in data
+    assert "database_cluster_host" in data
     assert "version" in data
+
+def test_database_health_diagnostics_endpoint():
+    response = client.get("/api/v1/health/database")
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
+    assert "storage_engine" in data
+    assert "cluster_host" in data
 
 def test_roads_geojson():
     response = client.get("/api/v1/roads/geojson")

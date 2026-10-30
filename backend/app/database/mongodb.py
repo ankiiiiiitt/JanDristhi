@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from datetime import datetime, timezone
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.config import settings
@@ -57,18 +58,56 @@ class MongoDBManager:
     client: Optional[AsyncIOMotorClient] = None
     db: Optional[AsyncIOMotorDatabase] = None
     is_connected: bool = False
+    connection_error: Optional[str] = None
+    last_connected_at: Optional[str] = None
+
+    def get_sanitized_host(self) -> str:
+        """Extracts the database host and port or cluster without user/password secrets."""
+        uri = settings.MONGODB_URI or ""
+        if "@" in uri:
+            # Extract portion after @ and before any query params or slashes
+            host_part = uri.split("@", 1)[1]
+            host_part = host_part.split("/", 1)[0].split("?", 1)[0]
+            scheme = "mongodb+srv" if "mongodb+srv" in uri else "mongodb"
+            return f"{scheme}://***:***@{host_part}"
+        elif "://" in uri:
+            scheme_and_host = uri.split("?", 1)[0]
+            return scheme_and_host
+        return "unconfigured_localhost:27017"
+
+    def _sanitize_error_message(self, err: Exception) -> str:
+        """Strips credentials and returns sanitized diagnostic message."""
+        raw = str(err)
+        # Regex or string replace for potential password patterns
+        import re
+        sanitized = re.sub(r"://([^:@]+):([^@]+)@", r"://***:***@", raw)
+        return sanitized
 
     async def connect_to_database(self):
         """Connects to MongoDB Atlas cluster with timeout check and fallback."""
         if settings.MOCK_MODE:
             logger.info("MOCK_MODE=true: Running with in-memory database store.")
             self.is_connected = False
+            self.connection_error = "MOCK_MODE is explicitly enabled via configuration"
             return
 
+        is_production = settings.ENVIRONMENT.lower() == "production"
+        is_localhost = "localhost" in settings.MONGODB_URI or "127.0.0.1" in settings.MONGODB_URI
+
+        if is_production and is_localhost:
+            msg = "MONGODB_URI is not set or defaults to localhost in production environment."
+            self.connection_error = msg
+            logger.critical(
+                "CRITICAL PRODUCTION ALERT: MONGODB_URI is missing or unconfigured! "
+                "The backend is falling back to ephemeral in-memory storage. "
+                "Persisted records will be lost on container restart. "
+                "Set MONGODB_URI in Render dashboard environment variables."
+            )
+
         try:
-            logger.info("Connecting to MongoDB Atlas...")
-            # Use responsive timeout for local dev, elevated timeout for Atlas TLS connection
-            timeout_ms = 5000 if settings.ENVIRONMENT == "production" or "mongodb+srv" in settings.MONGODB_URI else 2500
+            logger.info(f"Connecting to MongoDB cluster ({self.get_sanitized_host()})...")
+            # Elevated timeout for Atlas TLS connection
+            timeout_ms = 7500 if is_production or "mongodb+srv" in settings.MONGODB_URI else 2500
             self.client = AsyncIOMotorClient(
                 settings.MONGODB_URI,
                 serverSelectionTimeoutMS=timeout_ms,
@@ -79,14 +118,74 @@ class MongoDBManager:
             await self.client.admin.command('ping')
             self.db = self.client[settings.MONGODB_DB_NAME]
             self.is_connected = True
-            logger.info("Successfully connected to MongoDB Atlas!")
+            self.connection_error = None
+            self.last_connected_at = datetime.now(timezone.utc).isoformat()
+            logger.info("Successfully connected to MongoDB Atlas (%s)!", settings.MONGODB_DB_NAME)
             await self._ensure_indexes()
         except Exception as e:
-            logger.warning(
-                f"Could not connect to MongoDB Atlas ({e}). "
-                "Activating transparent fallback to mock data store so development is not blocked."
-            )
+            sanitized_err = self._sanitize_error_message(e)
+            self.connection_error = f"{type(e).__name__}: {sanitized_err}"
             self.is_connected = False
+            if is_production:
+                logger.critical(
+                    f"PRODUCTION ALERT: Failed to connect to MongoDB Atlas cluster ({self.get_sanitized_host()})! "
+                    f"Diagnostic error: {self.connection_error}. "
+                    "Running on fallback in-memory mock store."
+                )
+            else:
+                logger.warning(
+                    f"Could not connect to MongoDB ({self.connection_error}). "
+                    "Activating transparent fallback to mock data store so development is not blocked."
+                )
+
+    async def get_health_report(self) -> dict:
+        """Generates detailed database status and CRUD diagnostic summary."""
+        if self.is_connected and self.db is not None:
+            try:
+                # Perform quick roundtrip ping
+                await self.client.admin.command('ping')
+                obs_count = await self.db.observations.count_documents({})
+                roads_count = await self.db.road_segments.count_documents({})
+                rep_count = await self.db.repair_records.count_documents({})
+                return {
+                    "status": "connected",
+                    "storage_engine": "mongodb_atlas",
+                    "persistent": True,
+                    "cluster_host": self.get_sanitized_host(),
+                    "database_name": settings.MONGODB_DB_NAME,
+                    "collections": {
+                        "observations": obs_count,
+                        "road_segments": roads_count,
+                        "repair_records": rep_count
+                    },
+                    "last_connected_at": self.last_connected_at,
+                    "crud_verified": True
+                }
+            except Exception as e:
+                return {
+                    "status": "degraded",
+                    "storage_engine": "mongodb_atlas",
+                    "persistent": False,
+                    "error": self._sanitize_error_message(e)
+                }
+
+        is_production = settings.ENVIRONMENT.lower() == "production"
+        return {
+            "status": "disconnected",
+            "storage_engine": "in_memory_mock_fallback",
+            "persistent": False,
+            "environment": settings.ENVIRONMENT,
+            "cluster_host": self.get_sanitized_host(),
+            "database_name": settings.MONGODB_DB_NAME,
+            "error_diagnostic": self.connection_error or "Connection not established",
+            "production_alert": (
+                "CRITICAL: Running on ephemeral mock storage in production! "
+                "Persisted records will be lost on container restart. "
+                "Configure MONGODB_URI in Render dashboard."
+                if is_production else None
+            ),
+            "render_setup_guide": "Set MONGODB_URI in Render Dashboard -> Web Services -> jandrishti-backend -> Environment."
+        }
 
     async def close_database_connection(self):
         if self.client:
