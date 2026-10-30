@@ -514,3 +514,4 @@ class TwoStageRoadPipeline:
 
 # Global singleton pipeline instance
 two_stage_pipeline = TwoStageRoadPipeline()
+

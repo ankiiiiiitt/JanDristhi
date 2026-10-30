@@ -67,4 +67,7 @@ backend/uploads/
 ai-engine/output/
 !backend/uploads/.gitkeep
 !ai-engine/output/.gitkeep
+data/external/*.csv
+!data/external/ontario_pavement_condition_2023.csv
+
 

@@ -342,3 +342,4 @@ def test_api_upload_endpoint_records_separate_stage_results():
     steps = [log["step"] for log in data["processing_logs"]]
     assert "stage1_road_surface_validation" in steps
     assert "stage2_damage_detection" in steps
+

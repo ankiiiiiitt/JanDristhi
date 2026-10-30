@@ -30,3 +30,4 @@ __all__ = [
     "RDD2022_TAXONOMY",
     "UNRELATED_COCO_CLASSES",
 ]
+
