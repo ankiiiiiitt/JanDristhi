@@ -4,8 +4,8 @@ import shutil
 import hashlib
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Optional, List
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Body
 from app.config import settings
 from app.models.observation import ObservationModel, DetectionStatus, DetectionItem, DamageSeverity
 from app.models.common import GeoPoint
@@ -287,6 +287,20 @@ async def upload_observation(
             matched_road_name = f"{matched_sector} (Independent GPS Fix)"
             road_snapped = False
 
+        # Determine 4-status lifecycle:
+        # Pending Review | Accepted | Rejected | No Damage Detected
+        if not parsed_detections:
+            report_status = "no_damage_detected"
+            report_title = "Road Image - No Damage Detected"
+            is_hazard = False
+            hazard_category = "No Damage Detected"
+        else:
+            is_hazard = True
+            hazard_category = parsed_detections[0]["class_name"]
+            report_title = f"{parsed_detections[0]['class_name']} ({parsed_detections[0]['class_id']})"
+            # Citizen reports begin as pending_review until engineer confirms; survey runs auto-accepted
+            report_status = "pending_review" if (vehicle_id.startswith("MOB-") or vehicle_id.startswith("CITIZEN-")) else "accepted"
+
         # 3. Create observation record with actual model predictions and audit processing logs
         processing_logs = [
             {
@@ -322,7 +336,10 @@ async def upload_observation(
         observation_record = {
             "observation_id": obs_id,
             "report_id": report_id,
-            "report_status": "accepted",
+            "report_status": report_status,
+            "report_title": report_title,
+            "is_hazard": is_hazard,
+            "hazard_category": hazard_category,
             "report_source": "citizen" if vehicle_id.startswith("MOB-") or vehicle_id.startswith("CITIZEN-") else "survey",
             "road_photo_validated": True,
             "road_validation_engine": "YOLO road-damage detector",
@@ -396,6 +413,41 @@ async def upload_observation(
             detail=f"Failed to process observation upload: {str(e)}"
         )
 
+@router.patch("/{observation_id}/status")
+async def update_observation_status(
+    observation_id: str,
+    status_payload: Dict[str, Any] = Body(...)
+):
+    """
+    Updates observation lifecycle status:
+    'pending_review' | 'accepted' | 'rejected' | 'no_damage_detected'
+    """
+    new_status = status_payload.get("status")
+    allowed = {"pending_review", "accepted", "rejected", "no_damage_detected"}
+    if new_status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{new_status}'. Must be one of: {list(allowed)}")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if db_manager.is_connected and db_manager.db is not None:
+        res = await db_manager.db.observations.update_one(
+            {"$or": [{"observation_id": observation_id}, {"report_id": observation_id}]},
+            {"$set": {"report_status": new_status, "updated_at": now_iso}}
+        )
+        if res.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Observation report not found")
+        updated = await db_manager.db.observations.find_one(
+            {"$or": [{"observation_id": observation_id}, {"report_id": observation_id}]}, {"_id": 0}
+        )
+        return {"success": True, "data": updated}
+    else:
+        target = next((o for o in mock_store.observations if o.get("observation_id") == observation_id or o.get("report_id") == observation_id), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Observation report not found")
+        target["report_status"] = new_status
+        target["updated_at"] = now_iso
+        return {"success": True, "data": target}
+
+
 @router.get("")
 async def list_observations(
     limit: int = 50,
@@ -403,6 +455,7 @@ async def list_observations(
     sector: Optional[str] = None,
     severity: Optional[str] = None,
     detection_status: Optional[str] = None,
+    report_status: Optional[str] = None,
     sort_by: str = "created_at"
 ):
     """
@@ -421,6 +474,8 @@ async def list_observations(
             query["sector"] = sector
         if detection_status:
             query["detection_status"] = detection_status
+        if report_status:
+            query["report_status"] = report_status
         if severity:
             query["detections.severity"] = severity.lower()
 
@@ -436,6 +491,8 @@ async def list_observations(
             results = [o for o in results if o.get("sector") == sector]
         if detection_status:
             results = [o for o in results if o.get("detection_status") == detection_status]
+        if report_status:
+            results = [o for o in results if o.get("report_status") == report_status]
         if severity:
             sev_lower = severity.lower()
             results = [

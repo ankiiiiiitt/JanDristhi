@@ -129,6 +129,7 @@ export default function UserMobileApp({
   const [isVideoCaptured, setIsVideoCaptured] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [expandedReportId, setExpandedReportId] = useState(null);
+  const [reportsFilter, setReportsFilter] = useState('all'); // 'all' | 'pending_review' | 'accepted' | 'no_damage_detected' | 'rejected'
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const [lockedCoords, setLockedCoords] = useState(null);
@@ -653,10 +654,14 @@ export default function UserMobileApp({
 
       const enrichedObs = {
         observation_id: obsData.observation_id || `OBS-${Date.now()}`,
-        report_id: obsData.report_id || reportId,
+        report_id: obsData.report_id || reportId || `RPT-${Date.now()}`,
         vehicle_id: obsData.vehicle_id || (currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB'),
         report_source: obsData.report_source || 'citizen',
-        report_status: obsData.report_status || 'accepted',
+        report_status: obsData.report_status || (obsData.detections?.length > 0 ? 'pending_review' : 'no_damage_detected'),
+        report_title: obsData.report_title || (obsData.detections?.length > 0 ? `${obsData.detections[0].class_name} (${obsData.detections[0].class_id || 'RDD'})` : 'Road Image - No Damage Detected'),
+        is_hazard: obsData.is_hazard !== undefined ? obsData.is_hazard : (obsData.detections?.length > 0),
+        hazard_category: obsData.hazard_category || (obsData.detections?.length > 0 ? obsData.detections[0].class_name : 'No Damage Detected'),
+        road_photo_validated: obsData.road_photo_validated !== undefined ? obsData.road_photo_validated : true,
         location: obsData.location || {
           type: 'Point',
           coordinates: [Number(finalLng), Number(finalLat)]
@@ -664,13 +669,13 @@ export default function UserMobileApp({
         latitude: Number(finalLat),
         longitude: Number(finalLng),
         sector: obsData.sector || finalSector,
-        matched_road_name: obsData.matched_road_name || `${finalSector} (Live User Report)`,
+        matched_road_name: obsData.matched_road_name || (obsData.road_snapped ? `${finalSector} Road` : `${finalSector} (Independent GPS Fix)`),
         image_url: obsData.image_url,
         annotated_image_url: obsData.annotated_image_url || obsData.image_url,
         video_url: obsData.video_url || (isVideoCaptured ? capturedPreview : null),
         preview_url: capturedPreview || obsData.annotated_image_url || obsData.image_url,
         detections: obsData.detections || [],
-        telemetry_z_shock: obsData.telemetry_z_shock || 3.1,
+        telemetry_z_shock: obsData.telemetry_z_shock !== undefined ? obsData.telemetry_z_shock : null,
         captured_at: obsData.captured_at || exactTime,
         created_at: obsData.created_at || exactTime,
         duplicate: res.duplicate,
@@ -1049,20 +1054,39 @@ export default function UserMobileApp({
                       {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).slice(0, 3).map((item, i) => {
                         const firstDet = item.detections?.[0] || {};
                         const imgUrl = item.annotated_image_url || item.image_url || '/images/roads/road_pothole_d00.jpg';
+                        const hasNoDamage = item.report_status === 'no_damage_detected' || item.is_hazard === false || (!item.detections?.length && !item.video_url);
+                        const isRejected = item.report_status === 'rejected' || item.road_photo_validated === false;
+                        const itemTitle = item.report_title || (
+                          hasNoDamage
+                            ? 'Road Image - No Damage Detected'
+                            : firstDet.class_name
+                            ? `${firstDet.class_name} (${firstDet.class_id || 'RDD'})`
+                            : item.video_url
+                            ? 'Road Video Inspection'
+                            : 'Road Surface Hazard'
+                        );
+                        const statusConfig = isRejected
+                          ? { label: 'Rejected', color: 'text-rose-700 bg-rose-50 border-rose-200', dot: 'bg-rose-500' }
+                          : hasNoDamage
+                          ? { label: 'No Damage Detected', color: 'text-slate-700 bg-slate-100 border-slate-300', dot: 'bg-slate-400' }
+                          : item.report_status === 'pending_review'
+                          ? { label: 'Pending Review', color: 'text-amber-800 bg-amber-50 border-amber-200', dot: 'bg-amber-500' }
+                          : { label: 'Accepted', color: 'text-[#145547] bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' };
+
                         return (
                           <div key={item.observation_id || i} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
-                            <div className="flex items-center space-x-2.5">
-                              <img src={imgUrl} alt="Report Thumbnail" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs" onError={(e) => { e.target.onerror = null; e.target.src = '/images/roads/road_pothole_d00.jpg'; }} />
-                              <div>
-                                <p className="text-xs font-bold text-slate-900">{firstDet.class_name || (item.video_url ? 'Road Video Inspection' : 'Road Surface Hazard')}</p>
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <img src={imgUrl} alt="Report Thumbnail" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs shrink-0" onError={(e) => { e.target.onerror = null; e.target.src = '/images/roads/road_pothole_d00.jpg'; }} />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-900 truncate">{itemTitle}</p>
                                 <p className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{item.matched_road_name || item.sector || 'Field location'}</p>
-                                <span className={`text-[9px] font-bold flex items-center space-x-1 mt-0.5 ${item.report_status === 'rejected' || item.road_photo_validated === false ? 'text-rose-600' : 'text-[#145547]'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${item.report_status === 'rejected' || item.road_photo_validated === false ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                                  <span>{item.report_status === 'rejected' || item.road_photo_validated === false ? 'Invalid Image' : item.report_status === 'accepted' ? 'Geotagged' : 'Processed'}</span>
+                                <span className={`text-[9px] font-bold inline-flex items-center space-x-1 mt-0.5 px-1.5 py-0.2 rounded border ${statusConfig.color}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusConfig.dot}`} />
+                                  <span>{statusConfig.label}</span>
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-medium">{new Date(item.captured_at || item.created_at || Date.now()).toLocaleTimeString()}</span>
+                            <span className="text-[10px] text-slate-400 font-medium shrink-0 ml-2">{new Date(item.captured_at || item.created_at || Date.now()).toLocaleTimeString()}</span>
                           </div>
                         );
                       })}
@@ -1242,17 +1266,34 @@ export default function UserMobileApp({
                       {/* Upload Success Card OR Upload Action Card */}
                       {uploadSuccessData ? (
                         <div className="bg-white border border-emerald-200 rounded-2xl p-4 text-center space-y-3 shadow-md">
-                          <div className="inline-flex items-center space-x-1.5 text-[#145547] font-bold text-xs bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                            <CheckCircle2 className="w-4 h-4 text-[#145547]" />
-                            <span>{uploadSuccessData.inspection_summary ? '🎥 Video Inspection Analyzed & Logged!' : 'Road Hazard Uploaded & Logged!'}</span>
+                          <div className={`inline-flex items-center space-x-1.5 font-bold text-xs px-3 py-1 rounded-full border ${
+                            uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
+                              ? 'text-slate-700 bg-slate-100 border-slate-300'
+                              : 'text-[#145547] bg-emerald-50 border-emerald-200'
+                          }`}>
+                            <CheckCircle2 className={`w-4 h-4 ${
+                              uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
+                                ? 'text-slate-600'
+                                : 'text-[#145547]'
+                            }`} />
+                            <span>
+                              {uploadSuccessData.inspection_summary
+                                ? '🎥 Video Inspection Analyzed & Logged!'
+                                : uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
+                                ? 'Road Image - No Damage Detected (Clear Roadway)'
+                                : 'Road Hazard Uploaded & Logged!'}
+                            </span>
                           </div>
 
                           <p className="text-xs text-slate-700 font-semibold">
-                            {uploadSuccessData.duplicate ? 'Existing report:' : 'Report accepted:'} <span className="font-mono text-[#145547] font-bold">{uploadSuccessData.report_id || uploadSuccessData.observation_id}</span>
+                            {uploadSuccessData.duplicate ? 'Existing report:' : 'Report status:'} <span className="font-mono text-[#145547] font-bold">{uploadSuccessData.report_id || uploadSuccessData.observation_id}</span>
+                            <span className="ml-2 text-[10px] uppercase font-bold text-slate-500">
+                              ({uploadSuccessData.report_status?.replace('_', ' ')})
+                            </span>
                           </p>
 
                           <p className="text-[11px] text-slate-500">
-                            📍 {uploadSuccessData.matched_road_name || uploadSuccessData.sector || 'Field Inspection Location'}
+                            📍 {uploadSuccessData.matched_road_name || (uploadSuccessData.sector ? `${uploadSuccessData.sector} (Independent GPS Fix)` : 'Unmapped Road (Independent GPS Fix)')}
                           </p>
 
                           {/* Video Inspection Summary Card if available */}
@@ -1614,7 +1655,30 @@ export default function UserMobileApp({
               )}
 
               {/* TAB 4: REPORTS */}
-              {userTab === 'reports' && (
+              {userTab === 'reports' && (() => {
+                const citizenReports = observations.filter(o =>
+                  o.report_source === 'citizen' ||
+                  o.vehicle_id?.startsWith('MOB-') ||
+                  o.vehicle_id?.startsWith('CITIZEN-') ||
+                  o.video_url ||
+                  o.video_id
+                );
+
+                const pendingCount = citizenReports.filter(r => r.report_status === 'pending_review').length;
+                const acceptedCount = citizenReports.filter(r => r.report_status === 'accepted').length;
+                const noDamageCount = citizenReports.filter(r => r.report_status === 'no_damage_detected' || r.is_hazard === false).length;
+                const rejectedCount = citizenReports.filter(r => r.report_status === 'rejected' || r.road_photo_validated === false).length;
+
+                const filteredReports = citizenReports.filter(r => {
+                  if (reportsFilter === 'all') return true;
+                  if (reportsFilter === 'pending_review') return r.report_status === 'pending_review';
+                  if (reportsFilter === 'accepted') return r.report_status === 'accepted';
+                  if (reportsFilter === 'no_damage_detected') return r.report_status === 'no_damage_detected' || r.is_hazard === false;
+                  if (reportsFilter === 'rejected') return r.report_status === 'rejected' || r.road_photo_validated === false;
+                  return true;
+                });
+
+                return (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-500 hover:text-slate-800 transition-colors">
@@ -1624,14 +1688,60 @@ export default function UserMobileApp({
                     <span />
                   </div>
 
+                  {/* 4-Status Filter Pills: Pending Review | Accepted | No Damage Detected | Rejected */}
+                  <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none text-[10px]">
+                    {[
+                      { id: 'all', label: 'All', count: citizenReports.length },
+                      { id: 'pending_review', label: 'Pending Review', count: pendingCount },
+                      { id: 'accepted', label: 'Accepted', count: acceptedCount },
+                      { id: 'no_damage_detected', label: 'No Damage Detected', count: noDamageCount },
+                      { id: 'rejected', label: 'Rejected', count: rejectedCount }
+                    ].map(pill => (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        onClick={() => setReportsFilter(pill.id)}
+                        className={`px-2.5 py-1 rounded-full whitespace-nowrap font-bold transition-all border shrink-0 ${
+                          reportsFilter === pill.id
+                            ? 'bg-[#145547] text-white border-[#145547] shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-900'
+                        }`}
+                      >
+                        {pill.label} ({pill.count})
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="space-y-2.5">
-                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).map(r => {
+                    {filteredReports.map(r => {
                       const damage = r.detections?.[0] || {};
                       const isVid = Boolean(r.video_url || r.video_id);
                       const keyId = r.report_id || r.observation_id;
                       const isExpanded = expandedReportId === keyId;
                       const imgUrl = resolveImageUrl(r.annotated_image_url || r.image_url);
                       const vidUrl = r.video_url ? resolveImageUrl(r.video_url) : null;
+                      const hasNoDamage = r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url);
+                      const isRejected = r.report_status === 'rejected' || r.road_photo_validated === false;
+
+                      const itemTitle = r.report_title || (
+                        isRejected
+                          ? (r.rejection_reason ? 'Invalid Submission' : 'Rejected Submission')
+                          : hasNoDamage
+                          ? 'Road Image - No Damage Detected'
+                          : damage.class_name
+                          ? `${damage.class_name} (${damage.class_id || 'RDD'})`
+                          : isVid
+                          ? 'Road Video Inspection'
+                          : 'Road Surface Hazard'
+                      );
+
+                      const statusBadge = isRejected
+                        ? { label: 'Rejected', class: 'text-rose-700 bg-rose-50 border-rose-200' }
+                        : hasNoDamage
+                        ? { label: 'No Damage Detected', class: 'text-slate-700 bg-slate-100 border-slate-300' }
+                        : r.report_status === 'pending_review'
+                        ? { label: 'Pending Review', class: 'text-amber-800 bg-amber-50 border-amber-200' }
+                        : { label: 'Accepted', class: 'text-[#145547] bg-emerald-50 border-emerald-200' };
 
                       return (
                       <div key={keyId} className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all">
@@ -1652,7 +1762,7 @@ export default function UserMobileApp({
                             <div className="min-w-0">
                               <div className="flex items-center space-x-1.5 flex-wrap">
                                 <p className="text-xs font-bold text-slate-900 truncate">
-                                  {damage.class_name ? `${damage.class_name} (${damage.class_id || 'RDD'})` : (isVid ? 'Road Video Inspection' : 'Road Surface Hazard')}
+                                  {itemTitle}
                                 </p>
                                 {isVid && (
                                   <span className="text-[9px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-200 inline-flex items-center space-x-0.5">
@@ -1661,20 +1771,14 @@ export default function UserMobileApp({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-slate-500 truncate">{r.matched_road_name || r.sector || 'Field location'} • {new Date(r.captured_at || r.created_at || Date.now()).toLocaleTimeString()}</p>
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {r.matched_road_name || (r.sector ? `${r.sector} (Independent GPS Fix)` : 'Unmapped Road (Independent GPS Fix)')} • {new Date(r.captured_at || r.created_at || Date.now()).toLocaleTimeString()}
+                              </p>
                               <div className="flex items-center space-x-1 mt-1">
-                                <span className={`text-[9px] font-semibold px-2 py-0.5 rounded border inline-block ${
-                                  r.report_status === 'rejected' || r.road_photo_validated === false
-                                    ? 'text-rose-700 bg-rose-50 border-rose-200'
-                                    : 'text-[#145547] bg-emerald-50 border-emerald-200'
-                                }`}>
-                                  {r.report_status === 'rejected' || r.road_photo_validated === false
-                                    ? 'Invalid Image'
-                                    : r.report_status === 'accepted'
-                                      ? 'Accepted & Geotagged'
-                                      : 'Processed'}
+                                <span className={`text-[9px] font-semibold px-2 py-0.5 rounded border inline-block ${statusBadge.class}`}>
+                                  {statusBadge.label}
                                 </span>
-                                {damage.severity && (
+                                {damage.severity && !hasNoDamage && !isRejected && (
                                   <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
                                     {String(damage.severity).toUpperCase()}
                                   </span>
@@ -1710,7 +1814,31 @@ export default function UserMobileApp({
                               </div>
                             )}
 
-                            {r.annotated_image_url && (
+                            {hasNoDamage && (
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[11px] text-slate-700 space-y-1">
+                                <div className="flex items-center space-x-1.5 font-bold text-slate-800">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
+                                  <span>Inspection Result: Road Image - No Damage Detected</span>
+                                </div>
+                                <p className="text-[10px] text-slate-500">
+                                  Verified asphalt road surface with 0 detected defects. Clear roadway, not classified as a hazard.
+                                </p>
+                              </div>
+                            )}
+
+                            {isRejected && (
+                              <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-[11px] text-rose-800 space-y-1">
+                                <div className="flex items-center space-x-1.5 font-bold text-rose-700">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Validation Status: Rejected</span>
+                                </div>
+                                <p className="text-[10px] text-rose-700">
+                                  {r.rejection_reason || 'Image does not contain valid road surface imagery. Non-road imagery is rejected.'}
+                                </p>
+                              </div>
+                            )}
+
+                            {!hasNoDamage && !isRejected && r.detections && r.detections.length > 0 && r.annotated_image_url && (
                               <div className="space-y-1">
                                 <span className="text-[10px] font-bold text-slate-600 flex items-center space-x-1">
                                   <Sparkles className="w-3 h-3 text-[#145547]" />
@@ -1727,7 +1855,7 @@ export default function UserMobileApp({
                             {/* Telemetry & Detection Meta */}
                             <div className="bg-[#f0f7f4] p-2.5 rounded-xl border border-emerald-100 text-[10px] space-y-1">
                               <p className="text-slate-700">
-                                <b>GPS Snapped Road:</b> {r.matched_road_name || 'Chandigarh Urban Network'}
+                                <b>Road Location:</b> {r.matched_road_name || (r.sector ? `${r.sector} (Independent GPS Fix)` : 'Unmapped Road (Independent GPS Fix)')}
                               </p>
                               <p className="text-slate-600 font-mono">
                                 <b>Coordinates:</b> {r.location?.coordinates && r.location.coordinates.length >= 2
@@ -1736,9 +1864,14 @@ export default function UserMobileApp({
                                     ? `${Number(r.latitude).toFixed(5)}°N, ${Number(r.longitude).toFixed(5)}°E`
                                     : 'Coordinates not recorded')}
                               </p>
-                              {r.detections && r.detections.length > 0 && (
+                              {!hasNoDamage && !isRejected && r.detections && r.detections.length > 0 && (
                                 <p className="text-[#145547] font-semibold">
-                                  <b>Detections ({r.detections.length}):</b> {r.detections.map(d => `${d.class_name} (${Math.round((d.confidence || 0.85)*100)}% conf)`).join(', ')}
+                                  <b>Detections ({r.detections.length}):</b> {r.detections.map(d => `${d.class_name} (${d.confidence != null ? Math.round(d.confidence * 100) : '--'}% conf)`).join(', ')}
+                                </p>
+                              )}
+                              {hasNoDamage && (
+                                <p className="text-slate-600 font-semibold">
+                                  <b>Status:</b> Validated Road Footage • Zero Defects
                                 </p>
                               )}
                               {r.frame_timestamp_ms !== undefined && (
@@ -1751,12 +1884,16 @@ export default function UserMobileApp({
                         )}
                       </div>
                     )})}
-                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).length === 0 && (
-                      <p className="p-5 text-center text-xs text-slate-400">No submitted reports yet. Capture a road photo or video to start one.</p>
+                    {filteredReports.length === 0 && (
+                      <p className="p-5 text-center text-xs text-slate-400">
+                        {reportsFilter === 'all'
+                          ? 'No submitted reports yet. Capture a road photo or video to start one.'
+                          : `No reports found matching "${reportsFilter.replace('_', ' ')}".`}
+                      </p>
                     )}
                   </div>
                 </div>
-              )}
+              );})()}
 
               {/* TAB 5: PROFILE */}
               {userTab === 'profile' && (

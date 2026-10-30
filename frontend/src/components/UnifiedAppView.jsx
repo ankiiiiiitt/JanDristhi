@@ -1244,10 +1244,32 @@ export default function UnifiedAppView({
               </div>
             </div>
             <div className="grid gap-3.5 md:grid-cols-2">
-              {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen' || o.video_url || o.video_id).map(report => {
+              {observations.filter(o => o.report_status === 'accepted' || o.report_status === 'pending_review' || o.report_status === 'no_damage_detected' || o.report_source === 'citizen' || o.video_url || o.video_id).map(report => {
                 const detection = report.detections?.[0] || {};
                 const isVideo = Boolean(report.video_url || report.video_id);
                 const displayImg = resolveImageUrl(report.annotated_image_url || report.image_url);
+                const hasNoDamage = report.report_status === 'no_damage_detected' || report.is_hazard === false || (!report.detections?.length && !isVideo);
+                const isRejected = report.report_status === 'rejected' || report.road_photo_validated === false;
+
+                const reportTitle = report.report_title || (
+                  hasNoDamage
+                    ? 'Road Image - No Damage Detected'
+                    : isRejected
+                    ? 'Rejected Image'
+                    : detection.class_name
+                    ? `${detection.class_name} (${detection.class_id || 'RDD'})`
+                    : isVideo
+                    ? 'Video Inspection'
+                    : 'Road Hazard'
+                );
+
+                const statusBadge = isRejected
+                  ? { label: 'Rejected', class: 'text-rose-700 bg-rose-50 border-rose-200' }
+                  : hasNoDamage
+                  ? { label: 'No Damage Detected', class: 'text-slate-700 bg-slate-100 border-slate-300' }
+                  : report.report_status === 'pending_review'
+                  ? { label: 'Pending Review', class: 'text-amber-800 bg-amber-50 border-amber-200' }
+                  : { label: 'Accepted', class: 'text-[#145547] bg-emerald-50 border-emerald-200' };
 
                 return (
                   <div key={report.report_id || report.observation_id} className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3">
@@ -1269,20 +1291,26 @@ export default function UnifiedAppView({
                       <div className="min-w-0 text-xs flex-1">
                         <div className="flex items-center space-x-1.5 flex-wrap">
                           <p className="font-bold text-slate-900 truncate">
-                            {detection.class_name ? `${detection.class_name} (${detection.class_id || 'RDD'})` : (isVideo ? 'Video Inspection' : 'Road Hazard')}
+                            {reportTitle}
                           </p>
-                          <span className="text-[#145547] text-[10px] font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
-                            Accepted
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${statusBadge.class}`}>
+                            {statusBadge.label}
                           </span>
                         </div>
-                        <p className="text-slate-500 truncate mt-0.5">{report.matched_road_name || report.sector || 'GPS field location'}</p>
+                        <p className="text-slate-500 truncate mt-0.5">{report.matched_road_name || (report.sector ? `${report.sector} (Independent GPS Fix)` : 'GPS field location')}</p>
                         <p className="text-slate-400 text-[10px]">{new Date(report.captured_at || report.created_at || Date.now()).toLocaleString()}</p>
                         <p className="font-mono text-[9px] text-slate-400 truncate">{report.report_id || report.observation_id}</p>
                         <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-[#145547] font-bold text-[10px]">
-                            {(detection.severity || 'medium').toUpperCase()} • {Math.round((detection.confidence || 0.88) * 100)}% conf
-                          </span>
-                          {detection.estimated_area_sqm && (
+                          {!hasNoDamage && !isRejected && detection.class_name ? (
+                            <span className="text-[#145547] font-bold text-[10px]">
+                              {(detection.severity || 'medium').toUpperCase()} • {detection.confidence != null ? `${Math.round(detection.confidence * 100)}% conf` : 'Detected'}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 font-semibold text-[10px]">
+                              {hasNoDamage ? 'Verified Roadway • Zero Defects' : 'Image Rejected'}
+                            </span>
+                          )}
+                          {detection.estimated_area_sqm && !hasNoDamage && (
                             <span className="text-[10px] text-slate-500 font-mono">
                               Area: {detection.estimated_area_sqm} m²
                             </span>
@@ -1293,23 +1321,29 @@ export default function UnifiedAppView({
 
                     {/* Action Bar for Developers & Municipal Engineers */}
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {report.linked_segment_id ? `Linked: ${report.linked_segment_id}` : 'GPS Snapped Segment'}
+                      <span className="text-[10px] text-slate-400 font-medium truncate max-w-[200px]">
+                        {report.linked_segment_id ? `Linked: ${report.linked_segment_id}` : (report.matched_road_name || 'Independent GPS Fix')}
                       </span>
-                      <button
-                        onClick={() => openCreateRepairModal({
-                          segment_id: report.linked_segment_id || 'SEG-CHD-17-01',
-                          observation_id: report.observation_id,
-                          road_name: report.matched_road_name || report.sector || 'Chandigarh Urban Road',
-                          hazard_type: detection.class_name ? `${detection.class_name} Repair` : 'Road Resurfacing',
-                          priority: (detection.severity || 'medium').toLowerCase() === 'critical' ? 'critical' : 'high',
-                          before_image_url: report.annotated_image_url || report.image_url
-                        })}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-[#145547] text-[#145547] hover:text-white border border-emerald-200/70 text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs"
-                      >
-                        <Wrench className="w-3 h-3" />
-                        <span>Issue Repair Work Order</span>
-                      </button>
+                      {!hasNoDamage && !isRejected ? (
+                        <button
+                          onClick={() => openCreateRepairModal({
+                            segment_id: report.linked_segment_id || 'SEG-CHD-17-01',
+                            observation_id: report.observation_id,
+                            road_name: report.matched_road_name || report.sector || 'Chandigarh Urban Road',
+                            hazard_type: detection.class_name ? `${detection.class_name} Repair` : 'Road Resurfacing',
+                            priority: (detection.severity || 'medium').toLowerCase() === 'critical' ? 'critical' : 'high',
+                            before_image_url: report.annotated_image_url || report.image_url
+                          })}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-[#145547] text-[#145547] hover:text-white border border-emerald-200/70 text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          <span>Issue Repair Work Order</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                          {hasNoDamage ? 'Clear Roadway' : 'Rejected Submission'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

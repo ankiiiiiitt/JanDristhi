@@ -144,7 +144,9 @@ def test_clean_road_zero_false_positives():
     assert res.status_code == 201, res.text
     data = res.json()["data"]
     assert data["road_photo_validated"] is True
-    assert data["report_status"] == "accepted"
+    assert data["report_status"] == "no_damage_detected"
+    assert data["report_title"] == "Road Image - No Damage Detected"
+    assert data["is_hazard"] is False
     # Pristine road must have zero fabricated defects
     assert len(data["detections"]) == 0
     assert len(data["model_predictions"]) == 0
@@ -273,3 +275,4 @@ def test_store_actual_model_predictions_and_processing_logs():
     assert "ai_inference" in steps
     assert "independent_gps_verification" in steps
     assert "road_snapping_verification" in steps
+

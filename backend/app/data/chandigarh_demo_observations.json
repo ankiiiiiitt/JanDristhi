@@ -1,7 +1,14 @@
 [
   {
     "observation_id": "OBS-CHD-2026-001",
+    "report_id": "RPT-SURVEY-001",
     "vehicle_id": "CTU-BUS-104",
+    "report_source": "survey",
+    "report_status": "accepted",
+    "report_title": "Potholes (D40)",
+    "is_hazard": true,
+    "hazard_category": "Potholes",
+    "road_photo_validated": true,
     "location": {
       "type": "Point",
       "coordinates": [
@@ -9,15 +16,19 @@
         30.706
       ]
     },
+    "latitude": 30.706,
+    "longitude": 76.804,
     "altitude": 321.4,
     "speed_kmph": 31.5,
     "telemetry_z_shock": 4.65,
     "image_url": "/images/roads/road_pothole_d00.jpg",
+    "annotated_image_url": "/images/roads/road_pothole_d00.jpg",
+    "matched_road_name": "Industrial Area Phase 1 Spine Road",
     "detection_status": "processed",
     "detections": [
       {
         "class_id": "D40",
-        "class_name": "Pothole",
+        "class_name": "Potholes",
         "confidence": 0.94,
         "bbox": [
           140,
@@ -32,12 +43,18 @@
     "linked_segment_id": "RS-CHD-IND-PH1-019",
     "sector": "Industrial Area Phase 1",
     "captured_at": "2026-10-30T05:30:37.134544+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
     "created_at": "2026-10-30T05:30:37.134544+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-002",
+    "report_id": "RPT-SURVEY-002",
     "vehicle_id": "MC-WASTE-88",
+    "report_source": "survey",
+    "report_status": "accepted",
+    "report_title": "Alligator Cracking (D20)",
+    "is_hazard": true,
+    "hazard_category": "Alligator Cracking",
+    "road_photo_validated": true,
     "location": {
       "type": "Point",
       "coordinates": [
@@ -45,10 +62,14 @@
         30.7305
       ]
     },
+    "latitude": 30.7305,
+    "longitude": 76.772,
     "altitude": 345.0,
     "speed_kmph": 24.0,
     "telemetry_z_shock": 3.75,
     "image_url": "/images/roads/road_alligator_d10.jpg",
+    "annotated_image_url": "/images/roads/road_alligator_d10.jpg",
+    "matched_road_name": "Sector 22 Shastri Market Promenade",
     "detection_status": "processed",
     "detections": [
       {
@@ -68,12 +89,18 @@
     "linked_segment_id": "RS-CHD-SEC-22-011",
     "sector": "Sector 22",
     "captured_at": "2026-10-30T05:45:37.134550+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
     "created_at": "2026-10-30T05:45:37.134550+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-003",
+    "report_id": "RPT-SURVEY-003",
     "vehicle_id": "CHD-PATROL-12",
+    "report_source": "survey",
+    "report_status": "accepted",
+    "report_title": "Longitudinal Cracks (D00)",
+    "is_hazard": true,
+    "hazard_category": "Longitudinal Cracks",
+    "road_photo_validated": true,
     "location": {
       "type": "Point",
       "coordinates": [
@@ -81,15 +108,19 @@
         30.7408
       ]
     },
+    "latitude": 30.7408,
+    "longitude": 76.7825,
     "altitude": 350.2,
     "speed_kmph": 38.0,
     "telemetry_z_shock": 2.15,
     "image_url": "/images/roads/road_longitudinal_d20.jpg",
+    "annotated_image_url": "/images/roads/road_longitudinal_d20.jpg",
+    "matched_road_name": "Jan Marg (Sector 17)",
     "detection_status": "processed",
     "detections": [
       {
         "class_id": "D00",
-        "class_name": "Longitudinal Crack",
+        "class_name": "Longitudinal Cracks",
         "confidence": 0.79,
         "bbox": [
           50,
@@ -104,12 +135,18 @@
     "linked_segment_id": "RS-CHD-SEC-17-005",
     "sector": "Sector 17",
     "captured_at": "2026-10-30T06:00:37.134553+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
     "created_at": "2026-10-30T06:00:37.134553+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-004",
+    "report_id": "RPT-SURVEY-004",
     "vehicle_id": "CTU-BUS-219",
+    "report_source": "survey",
+    "report_status": "accepted",
+    "report_title": "Transverse Cracks (D10)",
+    "is_hazard": true,
+    "hazard_category": "Transverse Cracks",
+    "road_photo_validated": true,
     "location": {
       "type": "Point",
       "coordinates": [
@@ -117,15 +154,19 @@
         30.7228
       ]
     },
+    "latitude": 30.7228,
+    "longitude": 76.7682,
     "altitude": 338.0,
     "speed_kmph": 42.0,
     "telemetry_z_shock": 1.45,
     "image_url": "/images/roads/road_transverse_d40.jpg",
+    "annotated_image_url": "/images/roads/road_transverse_d40.jpg",
+    "matched_road_name": "Dakshin Marg (Sector 34)",
     "detection_status": "processed",
     "detections": [
       {
         "class_id": "D10",
-        "class_name": "Transverse Crack",
+        "class_name": "Transverse Cracks",
         "confidence": 0.72,
         "bbox": [
           200,
@@ -140,7 +181,159 @@
     "linked_segment_id": "RS-CHD-SEC-34-017",
     "sector": "Sector 34",
     "captured_at": "2026-10-30T06:10:37.134555+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
     "created_at": "2026-10-30T06:10:37.134555+00:00"
+  },
+  {
+    "observation_id": "OBS-CIT-2026-101",
+    "report_id": "RPT-CIT-101",
+    "vehicle_id": "MOB-4321",
+    "report_source": "citizen",
+    "report_status": "pending_review",
+    "report_title": "Potholes (D40)",
+    "is_hazard": true,
+    "hazard_category": "Potholes",
+    "road_photo_validated": true,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        76.7725,
+        30.7362
+      ]
+    },
+    "latitude": 30.7362,
+    "longitude": 76.7725,
+    "altitude": 348.0,
+    "speed_kmph": 0.0,
+    "telemetry_z_shock": 3.4,
+    "image_url": "/images/roads/road_pothole_d00.jpg",
+    "annotated_image_url": "/images/roads/road_pothole_d00.jpg",
+    "matched_road_name": "Udyog Path (Sector 22)",
+    "detection_status": "processed",
+    "detections": [
+      {
+        "class_id": "D40",
+        "class_name": "Potholes",
+        "confidence": 0.89,
+        "bbox": [
+          120,
+          180,
+          310,
+          390
+        ],
+        "severity": "high",
+        "estimated_area_sqm": 0.45
+      }
+    ],
+    "linked_segment_id": "RS-CHD-SEC-22-007",
+    "sector": "Sector 22",
+    "captured_at": "2026-10-31T01:15:00.000000+00:00",
+    "created_at": "2026-10-31T01:15:00.000000+00:00"
+  },
+  {
+    "observation_id": "OBS-CIT-2026-102",
+    "report_id": "RPT-CIT-102",
+    "vehicle_id": "MOB-4321",
+    "report_source": "citizen",
+    "report_status": "accepted",
+    "report_title": "Alligator Cracking (D20)",
+    "is_hazard": true,
+    "hazard_category": "Alligator Cracking",
+    "road_photo_validated": true,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        76.7765,
+        30.7448
+      ]
+    },
+    "latitude": 30.7448,
+    "longitude": 76.7765,
+    "altitude": 352.0,
+    "speed_kmph": 0.0,
+    "telemetry_z_shock": 2.8,
+    "image_url": "/images/roads/road_alligator_d10.jpg",
+    "annotated_image_url": "/images/roads/road_alligator_d10.jpg",
+    "matched_road_name": "Madhya Marg (Sector 17)",
+    "detection_status": "processed",
+    "detections": [
+      {
+        "class_id": "D20",
+        "class_name": "Alligator Cracking",
+        "confidence": 0.91,
+        "bbox": [
+          80,
+          150,
+          410,
+          380
+        ],
+        "severity": "medium",
+        "estimated_area_sqm": 0.62
+      }
+    ],
+    "linked_segment_id": "RS-CHD-SEC-17-001",
+    "sector": "Sector 17",
+    "captured_at": "2026-10-30T18:20:00.000000+00:00",
+    "created_at": "2026-10-30T18:20:00.000000+00:00"
+  },
+  {
+    "observation_id": "OBS-CIT-2026-103",
+    "report_id": "RPT-CIT-103",
+    "vehicle_id": "MOB-4321",
+    "report_source": "citizen",
+    "report_status": "no_damage_detected",
+    "report_title": "Road Image - No Damage Detected",
+    "is_hazard": false,
+    "hazard_category": "No Damage Detected",
+    "road_photo_validated": true,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        76.7745,
+        30.7265
+      ]
+    },
+    "latitude": 30.7265,
+    "longitude": 76.7745,
+    "altitude": 341.0,
+    "speed_kmph": 0.0,
+    "telemetry_z_shock": 0.8,
+    "image_url": "/images/roads/road_transverse_d40.jpg",
+    "matched_road_name": "Sarovar Path (Sector 34)",
+    "detection_status": "processed",
+    "detections": [],
+    "linked_segment_id": "RS-CHD-SEC-34-013",
+    "sector": "Sector 34",
+    "captured_at": "2026-10-30T16:45:00.000000+00:00",
+    "created_at": "2026-10-30T16:45:00.000000+00:00"
+  },
+  {
+    "observation_id": "OBS-CIT-2026-104",
+    "report_id": "RPT-CIT-104",
+    "vehicle_id": "MOB-4321",
+    "report_source": "citizen",
+    "report_status": "rejected",
+    "report_title": "Invalid Submission - Non-Road Photo",
+    "is_hazard": false,
+    "hazard_category": "Non-Road Rejected",
+    "road_photo_validated": false,
+    "rejection_reason": "Image rejected: Image appears to be a selfie or contains human facial features.",
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        76.7820,
+        30.7410
+      ]
+    },
+    "latitude": 30.7410,
+    "longitude": 76.7820,
+    "altitude": 350.0,
+    "speed_kmph": 0.0,
+    "telemetry_z_shock": 0.0,
+    "matched_road_name": "Sector 17 (Independent GPS Fix)",
+    "detection_status": "rejected",
+    "detections": [],
+    "sector": "Sector 17",
+    "captured_at": "2026-10-30T14:10:00.000000+00:00",
+    "created_at": "2026-10-30T14:10:00.000000+00:00"
   }
 ]

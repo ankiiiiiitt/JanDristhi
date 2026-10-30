@@ -84,9 +84,9 @@ def snap_gps_to_road_segment(
 
     is_matched = best_segment is not None and min_distance <= max_threshold_meters
 
-    if best_segment:
+    if is_matched and best_segment:
         return {
-            "matched": is_matched,
+            "matched": True,
             "segment_id": best_segment.get("segment_id"),
             "segment_name": best_segment.get("name"),
             "sector": best_segment.get("area_name", best_segment.get("ward_id", "Chandigarh")),
@@ -100,7 +100,7 @@ def snap_gps_to_road_segment(
     return {
         "matched": False,
         "segment_id": None,
-        "segment_name": "Unmatched Location",
+        "segment_name": "Unmapped Road",
         "distance_meters": round(min_distance, 1) if min_distance != float("inf") else None,
         "threshold_meters": max_threshold_meters,
         "snapped": False

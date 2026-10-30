@@ -1045,22 +1045,44 @@ export default function MobileAppExperience({
                   </div>
 
                   <div className="space-y-2.5">
-                    {[
-                      { id: 'REP-01', type: 'Pothole', sector: 'Sector 17', status: 'Under Review', score: '32/100', color: 'text-rose-400' },
-                      { id: 'REP-02', type: 'Crack Propagation', sector: 'Sector 22', status: 'Work Scheduled', score: '58/100', color: 'text-amber-400' },
-                      { id: 'REP-03', type: 'Resurfacing Patch', sector: 'Sector 34', status: 'Verified Fixed', score: '82/100', color: 'text-emerald-400' },
-                    ].map(r => (
-                      <div key={r.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-white">{r.type}</p>
-                          <p className="text-[10px] text-slate-400">{r.sector} • ID: {r.id}</p>
-                          <span className="text-[10px] font-semibold text-emerald-400 mt-1 block">{r.status}</span>
+                    {(observations || []).filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).map(r => {
+                      const damage = r.detections?.[0] || {};
+                      const hasNoDamage = r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url);
+                      const isRejected = r.report_status === 'rejected' || r.road_photo_validated === false;
+                      const title = r.report_title || (
+                        isRejected ? 'Invalid Submission' :
+                        hasNoDamage ? 'Road Image - No Damage Detected' :
+                        damage.class_name ? `${damage.class_name} (${damage.class_id || 'RDD'})` :
+                        'Road Surface Hazard'
+                      );
+                      const statusColor = isRejected ? 'text-rose-400' :
+                        hasNoDamage ? 'text-slate-400' :
+                        r.report_status === 'pending_review' ? 'text-amber-400' : 'text-emerald-400';
+                      const statusLabel = isRejected ? 'Rejected' :
+                        hasNoDamage ? 'No Damage Detected' :
+                        r.report_status === 'pending_review' ? 'Pending Review' : 'Accepted';
+
+                      return (
+                        <div key={r.report_id || r.observation_id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-bold text-white">{title}</p>
+                            <p className="text-[10px] text-slate-400">{r.matched_road_name || r.sector || 'Field Location'} • ID: {r.report_id || r.observation_id}</p>
+                            <span className={`text-[10px] font-semibold ${statusColor} mt-1 block`}>{statusLabel}</span>
+                          </div>
+                          <div className="text-right">
+                            {damage.severity && !hasNoDamage && !isRejected && (
+                              <p className="text-xs font-bold text-amber-400">{String(damage.severity).toUpperCase()}</p>
+                            )}
+                            {hasNoDamage && (
+                              <p className="text-xs font-bold text-slate-400">Clear</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`text-xs font-bold ${r.color}`}>HS: {r.score}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    {(observations || []).filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).length === 0 && (
+                      <p className="p-4 text-center text-xs text-slate-400">No citizen hazard reports yet.</p>
+                    )}
                   </div>
                 </div>
               )}

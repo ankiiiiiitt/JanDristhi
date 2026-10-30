@@ -26,7 +26,8 @@ UNRELATED_COCO_CLASSES = {
     "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
     "hair drier", "toothbrush", "banana", "apple", "sandwich", "orange",
     "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "cat", "dog",
-    "cup", "bottle", "knife", "spoon", "fork", "bowl"
+    "cup", "bottle", "knife", "spoon", "fork", "bowl", "backpack", "umbrella",
+    "handbag", "tie", "suitcase", "wine glass", "potted plant", "remote"
 }
 
 _coco_detector = None
@@ -144,9 +145,19 @@ def validate_road_photo(
     max_contour_area = max([cv2.contourArea(c) for c in contours], default=0.0)
     max_contour_ratio = max_contour_area / float(w * h)
 
-    if max_contour_ratio > 0.07 or skin_ratio > 0.12:
+    # Differentiate localized human face/portrait from diffuse warm indoor lighting
+    roi_y = int(h * 0.35)
+    b_mean = float(np.mean(img[roi_y:, :, 0]))
+    r_mean = float(np.mean(img[roi_y:, :, 2]))
+    is_indoor_warmth = (r_mean > 115.0 and (b_mean / max(1.0, r_mean)) < 0.58)
+
+    if (max_contour_ratio > 0.06 and max_contour_ratio < 0.45 and skin_ratio < 0.45) or (skin_ratio > 0.10 and not is_indoor_warmth):
         err = "Invalid Image: Selfie or portrait detected. Road inspections require capturing the road surface directly."
         return (False, err, {"rejection_reason": "selfie_detected", "skin_ratio": round(skin_ratio, 3)}) if return_metadata else (False, err)
+
+    if is_indoor_warmth:
+        err = "Invalid Image: Indoor scene or warm interior lighting detected. Road inspections require outdoor road surfaces."
+        return (False, err, {"rejection_reason": "indoor_scene_detected", "b_r_ratio": round(b_mean / r_mean, 2)}) if return_metadata else (False, err)
 
     # 2. YOLO Object Classification (Check for person, pet, or indoor furniture)
     detector = _get_coco_detector()
@@ -201,6 +212,13 @@ def validate_road_photo(
     if (extreme_pixels / float(w * h)) > 0.70:
         err = "Invalid Image: Document or printed page detected instead of road surface."
         return (False, err, {"rejection_reason": "document_detected"}) if return_metadata else (False, err)
+
+    # 7. Indoor Scene / Warm Interior Lighting Check
+    b_mean = float(np.mean(img[roi_y:, :, 0]))
+    r_mean = float(np.mean(img[roi_y:, :, 2]))
+    if r_mean > 115.0 and (b_mean / max(1.0, r_mean)) < 0.58:
+        err = "Invalid Image: Indoor scene or warm interior lighting detected. Road inspections require outdoor road surfaces."
+        return (False, err, {"rejection_reason": "indoor_scene_detected", "b_r_ratio": round(b_mean / r_mean, 2)}) if return_metadata else (False, err)
 
     metadata = {
         "width": w,
