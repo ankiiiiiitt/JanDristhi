@@ -25,3 +25,4 @@ services:
         sync: false        # Set to your Vercel frontend URL after deploying frontend
     healthCheckPath: /api/v1/health
     autoDeploy: true
+

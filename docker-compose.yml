@@ -69,3 +69,4 @@ volumes:
 networks:
   jandrishti-net:
     driver: bridge
+
