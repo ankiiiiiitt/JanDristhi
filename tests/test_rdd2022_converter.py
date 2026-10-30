@@ -63,10 +63,10 @@ SAMPLE_VOC_XML = """<annotation>
 class TestRDD2022YOLOConversion(unittest.TestCase):
 
     def test_class_mappings(self):
-        self.assertEqual(CLASS_MAPPING["D00"], 0)  # Potholes
-        self.assertEqual(CLASS_MAPPING["D10"], 1)  # Alligator Cracking
-        self.assertEqual(CLASS_MAPPING["D20"], 2)  # Longitudinal Cracks
-        self.assertEqual(CLASS_MAPPING["D40"], 3)  # Transverse Cracks
+        self.assertEqual(CLASS_MAPPING["D00"], 0)  # Longitudinal Cracks
+        self.assertEqual(CLASS_MAPPING["D10"], 1)  # Transverse Cracks
+        self.assertEqual(CLASS_MAPPING["D20"], 2)  # Alligator Cracking
+        self.assertEqual(CLASS_MAPPING["D40"], 3)  # Potholes
 
     def test_parse_voc_xml(self):
         with tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False) as f:

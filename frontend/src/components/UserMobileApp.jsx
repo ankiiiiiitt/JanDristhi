@@ -1056,9 +1056,9 @@ export default function UserMobileApp({
                               <div>
                                 <p className="text-xs font-bold text-slate-900">{firstDet.class_name || (item.video_url ? 'Road Video Inspection' : 'Road Surface Hazard')}</p>
                                 <p className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{item.matched_road_name || item.sector || 'Field location'}</p>
-                                <span className="text-[9px] text-[#145547] font-bold flex items-center space-x-1 mt-0.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                                  <span>{item.report_status === 'accepted' ? 'Geotagged' : 'Processed'}</span>
+                                <span className={`text-[9px] font-bold flex items-center space-x-1 mt-0.5 ${item.report_status === 'rejected' || item.road_photo_validated === false ? 'text-rose-600' : 'text-[#145547]'}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${item.report_status === 'rejected' || item.road_photo_validated === false ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                  <span>{item.report_status === 'rejected' || item.road_photo_validated === false ? 'Invalid Image' : item.report_status === 'accepted' ? 'Geotagged' : 'Processed'}</span>
                                 </span>
                               </div>
                             </div>
@@ -1373,9 +1373,24 @@ export default function UserMobileApp({
                           </div>
 
                           {uploadError && (
-                            <p className="text-[11px] text-rose-700 text-center font-medium bg-rose-50 p-2 rounded-xl border border-rose-200">
-                              {uploadError}
-                            </p>
+                            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-center space-y-2 shadow-xs">
+                              <div className="inline-flex items-center space-x-1.5 text-rose-700 font-bold text-xs bg-rose-100/80 px-3 py-1 rounded-full border border-rose-200">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Invalid Image</span>
+                              </div>
+                              <p className="text-[11px] text-rose-800 font-medium leading-relaxed">
+                                {uploadError}
+                              </p>
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={handleRetake}
+                                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"
+                                >
+                                  Retake Road Photo
+                                </button>
+                              </div>
+                            </div>
                           )}
 
                           {isUploading && (
@@ -1648,8 +1663,16 @@ export default function UserMobileApp({
                               </div>
                               <p className="text-[10px] text-slate-500 truncate">{r.matched_road_name || r.sector || 'Field location'} • {new Date(r.captured_at || r.created_at || Date.now()).toLocaleTimeString()}</p>
                               <div className="flex items-center space-x-1 mt-1">
-                                <span className="text-[9px] font-semibold text-[#145547] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                                  {r.report_status === 'accepted' ? 'Accepted & Geotagged' : 'Processed'}
+                                <span className={`text-[9px] font-semibold px-2 py-0.5 rounded border inline-block ${
+                                  r.report_status === 'rejected' || r.road_photo_validated === false
+                                    ? 'text-rose-700 bg-rose-50 border-rose-200'
+                                    : 'text-[#145547] bg-emerald-50 border-emerald-200'
+                                }`}>
+                                  {r.report_status === 'rejected' || r.road_photo_validated === false
+                                    ? 'Invalid Image'
+                                    : r.report_status === 'accepted'
+                                      ? 'Accepted & Geotagged'
+                                      : 'Processed'}
                                 </span>
                                 {damage.severity && (
                                   <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">

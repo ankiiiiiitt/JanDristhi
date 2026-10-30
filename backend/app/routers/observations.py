@@ -198,7 +198,9 @@ async def upload_observation(
         with open(saved_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        accepted, validation_error = validate_road_photo(saved_file_path, file.content_type, file.filename)
+        accepted, validation_error, validation_meta = validate_road_photo(
+            saved_file_path, file.content_type, file.filename, return_metadata=True
+        )
         if not accepted:
             saved_file_path.unlink(missing_ok=True)
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=validation_error)
@@ -218,33 +220,50 @@ async def upload_observation(
         image_url = f"/uploads/{saved_filename}"
         annotated_image_url = f"/uploads/{annotated_filename}"
 
-        # 1. Run AI detection and generate annotated bounding box image
+        # 1. Run AI detection without fake fallbacks
         raw_detections = ai_bridge.detect_road_damage(
             str(saved_file_path),
             annotate_output_path=str(annotated_file_path),
-            allow_fallback=True
+            allow_fallback=False
         )
-        if not raw_detections:
-            annotated_file_path.unlink(missing_ok=True)
-            saved_file_path.unlink(missing_ok=True)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="This image could not be validated as a road photo. Please capture the road surface again."
-            )
+
+        # If road has zero hazards, copy pristine original to annotated path
+        if not raw_detections and not annotated_file_path.exists():
+            shutil.copyfile(saved_file_path, annotated_file_path)
+
+        # Correct RDD2022 4-class taxonomy:
+        # D00: Longitudinal Cracks, D10: Transverse Cracks, D20: Alligator Cracking, D40: Potholes
+        rdd_taxonomy = {
+            "D00": "Longitudinal Cracks",
+            "D10": "Transverse Cracks",
+            "D20": "Alligator Cracking",
+            "D40": "Potholes"
+        }
 
         parsed_detections: List[dict] = []
-        for d in raw_detections:
-            parsed_detections.append({
-                "class_id": d.get("class_id", "D00"),
-                "class_name": d.get("class_name", "Potholes"),
-                "confidence": float(d.get("confidence", 0.88)),
-                "bbox": d.get("bbox", [100, 100, 250, 250]),
-                "severity": d.get("severity", "medium"),
-                "estimated_area_sqm": float(d.get("estimated_area_sqm", 0.40)),
-                "engine": d.get("engine", "RDD2022")
-            })
+        for d in (raw_detections or []):
+            cid = d.get("class_id", "D40")
+            cname = rdd_taxonomy.get(cid, d.get("class_name", "Potholes"))
+            conf = float(d.get("confidence", 0.85))
+            bbox = d.get("bbox", [100, 100, 250, 250])
+            area_sqm = float(d.get("estimated_area_sqm", 0.35))
+            severity = d.get("severity", "medium")
 
-        # 2. GPS Snapping to nearest Chandigarh road segment
+            # Validate confidence and bounding box sanity
+            if conf >= 0.35 and len(bbox) == 4 and (bbox[2] > bbox[0]) and (bbox[3] > bbox[1]):
+                parsed_detections.append({
+                    "class_id": cid,
+                    "class_name": cname,
+                    "confidence": round(conf, 2),
+                    "bbox": bbox,
+                    "severity": severity,
+                    "estimated_area_sqm": round(area_sqm, 2),
+                    "engine": d.get("engine", "RDD2022")
+                })
+
+        # 2. Independent GPS & Road Snapping Verification
+        is_valid_gps = (-90.0 <= latitude <= 90.0) and (-180.0 <= longitude <= 180.0) and not (latitude == 0.0 and longitude == 0.0)
+
         segments = []
         if db_manager.is_connected and db_manager.db is not None:
             cursor = db_manager.db.road_segments.find({}, {"_id": 0})
@@ -254,18 +273,52 @@ async def upload_observation(
 
         snap_result = snap_gps_to_road_segment(latitude, longitude, segments, max_threshold_meters=150.0)
         is_matched = snap_result.get("matched", False)
+        snapping_distance = snap_result.get("distance_meters")
+
         if is_matched:
             linked_segment_id = snap_result.get("segment_id")
             matched_road_name = snap_result.get("segment_name") or "Urban Road Segment"
             matched_sector = snap_result.get("sector") or sector or "Chandigarh"
-            snapping_distance = snap_result.get("distance_meters")
+            road_snapped = True
         else:
-            linked_segment_id = snap_result.get("segment_id")
-            matched_sector = sector or snap_result.get("sector") or "Field Location"
-            matched_road_name = f"{matched_sector} (Live GPS Report)"
-            snapping_distance = snap_result.get("distance_meters")
+            # Independent GPS fix without false association to distant segments
+            linked_segment_id = None
+            matched_sector = sector or "Field Location"
+            matched_road_name = f"{matched_sector} (Independent GPS Fix)"
+            road_snapped = False
 
-        # 3. Create observation record
+        # 3. Create observation record with actual model predictions and audit processing logs
+        processing_logs = [
+            {
+                "step": "pre_inference_admission",
+                "status": "passed",
+                "timestamp": now_iso,
+                "validation_meta": validation_meta
+            },
+            {
+                "step": "ai_inference",
+                "status": "completed",
+                "timestamp": now_iso,
+                "detections_count": len(parsed_detections),
+                "model_engine": "YOLOv8-RDD2022 / CV Surface Analysis"
+            },
+            {
+                "step": "independent_gps_verification",
+                "status": "verified" if is_valid_gps else "unverified",
+                "timestamp": now_iso,
+                "latitude": latitude,
+                "longitude": longitude
+            },
+            {
+                "step": "road_snapping_verification",
+                "status": "snapped" if road_snapped else "independent_unlinked",
+                "timestamp": now_iso,
+                "road_snapped": road_snapped,
+                "snapping_distance_meters": snapping_distance,
+                "linked_segment_id": linked_segment_id
+            }
+        ]
+
         observation_record = {
             "observation_id": obs_id,
             "report_id": report_id,
@@ -286,10 +339,14 @@ async def upload_observation(
             "annotated_image_url": annotated_image_url,
             "detection_status": "processed",
             "detections": parsed_detections,
+            "model_predictions": parsed_detections,
+            "processing_logs": processing_logs,
             "linked_segment_id": linked_segment_id,
             "matched_road_name": matched_road_name,
             "sector": matched_sector,
             "snapping_distance_meters": snapping_distance,
+            "gps_verified": is_valid_gps,
+            "road_snapped": road_snapped,
             "captured_at": captured_iso,
             "created_at": now_iso,
             "data_label": "[LIVE CITIZEN INSPECTION]"

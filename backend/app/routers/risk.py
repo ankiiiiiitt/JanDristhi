@@ -67,8 +67,8 @@ def compute_ihs_and_risk(
             "monsoon_drainage_risk": round(im, 2)
         },
         "contributing_hazards": [
-            {"type": "Potholes (D00)", "weight": round(ip * wp, 2)},
-            {"type": "Structural Cracking (D10/D20/D40)", "weight": round(ic * wc, 2)},
+            {"type": "Potholes (D40)", "weight": round(ip * wp, 2)},
+            {"type": "Structural Cracking (D00/D10/D20)", "weight": round(ic * wc, 2)},
             {"type": "Vehicular Z-Shock Spikes", "weight": round(iv * wv, 2)},
             {"type": "Monsoon Drainage Vulnerability", "weight": round(im * wm, 2)}
         ]
@@ -108,11 +108,11 @@ async def get_analytics_overview():
     scores = [s.get("health_score", 70.0) for s in segments]
     avg_health = round(sum(scores) / len(scores), 1) if scores else 68.0
 
-    # Counts from observations
-    d00_count = 0 # Potholes
-    d10_count = 0 # Alligator cracking
-    d20_count = 0 # Longitudinal cracks
-    d40_count = 0 # Transverse cracks
+    # Counts from observations (RDD2022 taxonomy: D00=Longitudinal, D10=Transverse, D20=Alligator, D40=Pothole)
+    d00_count = 0  # Longitudinal cracks
+    d10_count = 0  # Transverse cracks
+    d20_count = 0  # Alligator cracking
+    d40_count = 0  # Potholes
     critical_hazards = 0
 
     for obs in observations:
@@ -218,7 +218,7 @@ async def evaluate_segment_risk(segment_id: str):
             max_z_shock = z
         for d in obs.get("detections", []):
             cid = d.get("class_id", "")
-            if cid == "D00":
+            if cid == "D40":
                 pothole_count += 1
                 pothole_area += d.get("estimated_area_sqm", 0.4)
             else:

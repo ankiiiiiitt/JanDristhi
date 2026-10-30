@@ -94,7 +94,7 @@ class MockDataStore:
                 "contributing_hazards": [
                     {"type": "Heavy Freight Wheel Ruts", "weight": 0.45},
                     {"type": "Water Logging Runoff Index", "weight": 0.35},
-                    {"type": "Deep Pothole Cavities (D00)", "weight": 0.20}
+                    {"type": "Deep Pothole Cavities (D40)", "weight": 0.20}
                 ],
                 "estimated_cost_inr": 485000.0,
                 "assessed_at": datetime.now(timezone.utc).isoformat(),
@@ -115,7 +115,7 @@ class MockDataStore:
                     "traffic_vibration_index": 0.55
                 },
                 "contributing_hazards": [
-                    {"type": "Alligator Cracking Clusters (D10)", "weight": 0.50},
+                    {"type": "Alligator Cracking Clusters (D20)", "weight": 0.50},
                     {"type": "Pedestrian & Delivery Transit", "weight": 0.30},
                     {"type": "Minor Surface Depressions", "weight": 0.20}
                 ],

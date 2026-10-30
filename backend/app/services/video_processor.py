@@ -224,7 +224,7 @@ class MobileCollectorVideoProcessor:
 
             if detections:
                 for d in detections:
-                    if d.get("class_id") == "D00":
+                    if d.get("class_id") == "D40":
                         total_potholes += 1
                         total_pothole_area += float(d.get("estimated_area_sqm", 0.35))
                     else:
@@ -251,10 +251,13 @@ class MobileCollectorVideoProcessor:
                     "annotated_image_url": web_annotated_url,
                     "detection_status": "processed",
                     "detections": detections,
+                    "model_predictions": detections,
                     "linked_segment_id": seg_id,
                     "matched_road_name": seg_name,
                     "sector": sec_name,
                     "snapping_distance_meters": snap_res.get("distance_meters", 15.0),
+                    "gps_verified": True,
+                    "road_snapped": seg_id is not None,
                     "captured_at": cap_iso,
                     "created_at": now_iso,
                     "data_label": "[LIVE VIDEO INSPECTION]"

@@ -23,10 +23,10 @@ class MultiHazardRiskPredictor:
         """
         Calculates composite Infrastructure Health Score (IHS) and Failure Probability.
         """
-        # 1. Pothole and crack severity indices
-        pothole_count = sum(1 for d in detections if d.get("class_id") == "D00")
-        pothole_area = sum(d.get("estimated_area_sqm", 0.0) for d in detections if d.get("class_id") == "D00")
-        crack_count = sum(1 for d in detections if d.get("class_id") in ["D10", "D20", "D40"])
+        # 1. Pothole and crack severity indices (D40=Pothole, D00/D10/D20=Cracks)
+        pothole_count = sum(1 for d in detections if d.get("class_id") == "D40")
+        pothole_area = sum(d.get("estimated_area_sqm", 0.0) for d in detections if d.get("class_id") == "D40")
+        crack_count = sum(1 for d in detections if d.get("class_id") in ["D00", "D10", "D20"])
 
         # Normalized damage index (0.0 to 1.0)
         pothole_impact = min(1.0, (pothole_count * 0.3) + (pothole_area * 0.4))

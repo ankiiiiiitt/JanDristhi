@@ -25,8 +25,8 @@ class TestAIEngine(unittest.TestCase):
     def test_risk_predictor_calculation(self):
         predictor = MultiHazardRiskPredictor()
         dummy_detections = [
-            {"class_id": "D00", "class_name": "Pothole", "estimated_area_sqm": 0.5, "severity": "critical"},
-            {"class_id": "D10", "class_name": "Alligator Cracking", "estimated_area_sqm": 0.3, "severity": "medium"}
+            {"class_id": "D40", "class_name": "Potholes", "estimated_area_sqm": 0.5, "severity": "critical"},
+            {"class_id": "D20", "class_name": "Alligator Cracking", "estimated_area_sqm": 0.3, "severity": "medium"}
         ]
         result = predictor.calculate_health_and_risk(
             detections=dummy_detections,

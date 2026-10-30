@@ -837,7 +837,7 @@ export const MOCK_OBSERVATIONS = [
     "detection_status": "processed",
     "detections": [
       {
-        "class_id": "D00",
+        "class_id": "D40",
         "class_name": "Pothole",
         "confidence": 0.94,
         "bbox": [
@@ -872,7 +872,7 @@ export const MOCK_OBSERVATIONS = [
     "detection_status": "processed",
     "detections": [
       {
-        "class_id": "D10",
+        "class_id": "D20",
         "class_name": "Alligator Cracking",
         "confidence": 0.86,
         "bbox": [
@@ -907,7 +907,7 @@ export const MOCK_OBSERVATIONS = [
     "detection_status": "processed",
     "detections": [
       {
-        "class_id": "D20",
+        "class_id": "D00",
         "class_name": "Longitudinal Crack",
         "confidence": 0.79,
         "bbox": [
@@ -942,7 +942,7 @@ export const MOCK_OBSERVATIONS = [
     "detection_status": "processed",
     "detections": [
       {
-        "class_id": "D40",
+        "class_id": "D10",
         "class_name": "Transverse Crack",
         "confidence": 0.72,
         "bbox": [

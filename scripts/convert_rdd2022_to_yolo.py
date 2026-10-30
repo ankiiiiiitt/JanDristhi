@@ -30,18 +30,18 @@ from typing import Dict, List, Tuple, Set, Optional
 
 # RDD2022 Standard Class Mapping to 0-indexed YOLO IDs
 CLASS_MAPPING: Dict[str, int] = {
-    "D00": 0,  # Potholes
-    "D10": 1,  # Alligator Cracking
-    "D20": 2,  # Longitudinal Cracks
-    "D40": 3,  # Transverse Cracks
+    "D00": 0,  # Longitudinal Cracks
+    "D10": 1,  # Transverse Cracks
+    "D20": 2,  # Alligator Cracking
+    "D40": 3,  # Potholes
 }
 
 CLASS_NAMES: Dict[int, str] = {v: k for k, v in CLASS_MAPPING.items()}
 CLASS_DESCRIPTIONS: Dict[str, str] = {
-    "D00": "Pothole",
-    "D10": "Alligator Cracking",
-    "D20": "Longitudinal Crack",
-    "D40": "Transverse Crack"
+    "D00": "Longitudinal Crack",
+    "D10": "Transverse Crack",
+    "D20": "Alligator Crack",
+    "D40": "Pothole"
 }
 
 
@@ -397,10 +397,10 @@ def convert_dataset_80_10_10(
         f.write(f"test: images/test\n\n")
         f.write(f"# RDD2022 4-Class Mapping\n")
         f.write(f"names:\n")
-        f.write(f"  0: D00  # Potholes\n")
-        f.write(f"  1: D10  # Alligator Cracking\n")
-        f.write(f"  2: D20  # Longitudinal Cracks\n")
-        f.write(f"  3: D40  # Transverse Cracks\n")
+        f.write(f"  0: D00  # Longitudinal Cracks\n")
+        f.write(f"  1: D10  # Transverse Cracks\n")
+        f.write(f"  2: D20  # Alligator Cracking\n")
+        f.write(f"  3: D40  # Potholes\n")
 
     return conversion_stats
 

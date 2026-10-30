@@ -62,11 +62,11 @@ class AIBridge:
         if not detections and allow_fallback:
             detections = [
                 {
-                    "class_id": "D00",
+                    "class_id": "D40",
                     "class_name": "Potholes",
                     "confidence": 0.88,
                     "bbox": [140, 220, 310, 410],
-                    "severity": "critical",
+                    "severity": "high",
                     "estimated_area_sqm": 0.45,
                     "engine": "RDD2022-SurfaceAnalysis"
                 }

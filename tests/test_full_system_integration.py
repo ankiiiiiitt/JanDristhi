@@ -19,11 +19,27 @@ client = TestClient(app)
 
 
 def create_dummy_road_image() -> bytes:
-    """Generates a small in-memory JPEG for observation upload tests."""
-    img = Image.new("RGB", (320, 240), color=(128, 128, 128))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    return buf.getvalue()
+    """Generates an authentic in-memory road image with asphalt texture and pothole."""
+    import cv2
+    import numpy as np
+    frame = np.full((480, 640, 3), 85, dtype=np.uint8)
+    noise = np.random.randint(-15, 15, (480, 640, 3), dtype=np.int16)
+    frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    cv2.line(frame, (60, 480), (300, 150), (210, 210, 210), 4)
+    cv2.ellipse(frame, (320, 260), (75, 50), 0, 0, 360, (25, 25, 25), -1)
+    ret, buf = cv2.imencode(".jpg", frame)
+    return buf.tobytes()
+
+
+def create_clean_repaired_image() -> bytes:
+    """Generates an authentic smooth freshly resurfaced asphalt image for repair verification."""
+    import cv2
+    import numpy as np
+    frame = np.full((480, 640, 3), 75, dtype=np.uint8)
+    noise = np.random.randint(-8, 8, (480, 640, 3), dtype=np.int16)
+    frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    ret, buf = cv2.imencode(".jpg", frame)
+    return buf.tobytes()
 
 
 def test_full_system_integration_lifecycle():
@@ -168,7 +184,7 @@ def test_full_system_integration_lifecycle():
     target_repair_id = target_repair["repair_id"]
 
     # Contractor uploads post-repair photo
-    after_image = create_dummy_road_image()
+    after_image = create_clean_repaired_image()
     verify_res = client.post(
         f"/api/v1/repairs/verify/{target_repair_id}",
         files={"after_file": ("after_repair.jpg", after_image, "image/jpeg")}

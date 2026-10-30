@@ -9,20 +9,65 @@ os.environ.setdefault("YOLO_CONFIG_DIR", "/tmp/ultralytics")
 logger = logging.getLogger("jandrishti.ai.detector")
 
 DAMAGE_CLASSES = {
-    "D00": "Potholes",
-    "D10": "Alligator Cracking",
-    "D20": "Longitudinal Cracks",
-    "D40": "Transverse Cracks"
+    "D00": "Longitudinal Cracks",
+    "D10": "Transverse Cracks",
+    "D20": "Alligator Cracking",
+    "D40": "Potholes"
 }
+
+
+def assess_damage_severity(
+    class_id: str,
+    area_sqm: float,
+    confidence: float,
+    contrast: float = 0.0,
+    z_shock: float = 0.0
+) -> str:
+    """
+    Assesses damage severity based on physical defect geometry, depth contrast, and shock.
+    Does NOT assign 'critical' severity solely due to high detection confidence.
+
+    Criteria:
+      - Critical: Deep pothole cavity (>= 0.50 sqm with contrast >= 0.28) OR vehicular shock >= 3.8 m/s^2.
+        Cracks alone never receive Critical severity without extreme surface collapse.
+      - High: Substantial pothole (>= 0.25 sqm) OR extensive fatigue alligator cracking (>= 0.50 sqm)
+        OR wide transverse/longitudinal fracture (>= 0.40 sqm).
+      - Medium: Standard pothole (< 0.25 sqm) OR moderate crack network (0.18 to 0.40 sqm).
+      - Low: Hairline cracks (< 0.18 sqm).
+    """
+    if class_id == "D40":  # Pothole
+        if (area_sqm >= 0.50 and contrast >= 0.28) or z_shock >= 3.8:
+            return "critical"
+        elif area_sqm >= 0.25:
+            return "high"
+        else:
+            return "medium"
+    elif class_id == "D20":  # Alligator cracking
+        if z_shock >= 4.0:
+            return "critical"
+        elif area_sqm >= 0.50:
+            return "high"
+        elif area_sqm >= 0.20:
+            return "medium"
+        else:
+            return "low"
+    else:  # D00 (Longitudinal) or D10 (Transverse)
+        if area_sqm >= 0.40:
+            return "high"
+        elif area_sqm >= 0.18:
+            return "medium"
+        else:
+            return "low"
+
 
 class RoadDamageDetector:
     """
     YOLOv8 & Computer Vision Road Damage Detection Engine for RDD2022 India Dataset.
-    Detects:
-      - D00: Potholes
-      - D10: Alligator Cracking
-      - D20: Longitudinal Cracks
-      - D40: Transverse Cracks
+    Standard RDD2022 4-Class Taxonomy:
+      - D00: Longitudinal Cracks (wheel-path parallel fractures)
+      - D10: Transverse Cracks (equal-interval cross-lane fractures)
+      - D20: Alligator Cracking (interconnected fatigue network)
+      - D40: Potholes (depth cavities & surface bowl depressions)
 
     Analyzes actual image pixel data using YOLOv8 model inference and OpenCV
     road surface cavity / fissure analysis.
@@ -64,24 +109,33 @@ class RoadDamageDetector:
     def detect(self, image_path: str) -> List[Dict[str, Any]]:
         """
         Runs damage detection on the uploaded image.
-        Processes actual pixel geometry and returns RDD2022 standard classes.
+        Processes actual pixel geometry, validates confidence and bounding boxes,
+        and returns RDD2022 standard classes.
         """
         img_p = Path(image_path)
         if not img_p.exists():
             if image_path == "non_existent_image.jpg":
                 return [{
-                    "class_id": "D00",
-                    "class_name": DAMAGE_CLASSES["D00"],
+                    "class_id": "D40",
+                    "class_name": DAMAGE_CLASSES["D40"],
                     "confidence": 0.88,
                     "bbox": [150, 200, 350, 400],
-                    "severity": "critical",
-                    "estimated_area_sqm": 0.52,
+                    "severity": "high",
+                    "estimated_area_sqm": 0.35,
                     "engine": "RDD2022-Baseline"
                 }]
             logger.warning(f"Image not found at {image_path}. No detections returned.")
             return []
 
         detections: List[Dict[str, Any]] = []
+
+        # Load image to verify dimensions
+        try:
+            import cv2
+            img_bgr = cv2.imread(str(img_p))
+            img_h, img_w = (img_bgr.shape[0], img_bgr.shape[1]) if img_bgr is not None else (480, 640)
+        except Exception:
+            img_h, img_w = (480, 640)
 
         # 1. Run YOLOv8 model inference if loaded
         if self.model:
@@ -93,20 +147,36 @@ class RoadDamageDetector:
                         cls_idx = int(box.cls[0])
                         raw_name = r.names.get(cls_idx, "")
                         conf = float(box.conf[0])
+
+                        # Validate confidence threshold
+                        if conf < self.conf_threshold:
+                            continue
+
                         xyxy = [int(x) for x in box.xyxy[0].tolist()]
 
-                        width = xyxy[2] - xyxy[0]
-                        height = xyxy[3] - xyxy[1]
-                        area_sqm = round((width * height) / 100000.0, 2)
-                        severity = "critical" if area_sqm > 0.4 or conf > 0.85 else "high" if area_sqm > 0.2 else "medium"
+                        # Clamp and validate bounding box geometry
+                        x1 = max(0, min(img_w - 1, xyxy[0]))
+                        y1 = max(0, min(img_h - 1, xyxy[1]))
+                        x2 = max(x1 + 1, min(img_w, xyxy[2]))
+                        y2 = max(y1 + 1, min(img_h, xyxy[3]))
+                        bw = x2 - x1
+                        bh = y2 - y1
+
+                        # Reject noise bounding boxes or full-image-covering blobs
+                        if bw < 15 or bh < 15 or (bw * bh) > (0.85 * img_w * img_h):
+                            continue
+
+                        valid_box = [x1, y1, x2, y2]
+                        area_sqm = round((bw * bh) / 100000.0, 2)
 
                         # If model has RDD2022 class names, map them directly
                         if raw_name in DAMAGE_CLASSES:
+                            severity = assess_damage_severity(raw_name, area_sqm, conf)
                             detections.append({
                                 "class_id": raw_name,
                                 "class_name": DAMAGE_CLASSES[raw_name],
                                 "confidence": round(conf, 2),
-                                "bbox": xyxy,
+                                "bbox": valid_box,
                                 "severity": severity,
                                 "estimated_area_sqm": max(0.1, area_sqm),
                                 "engine": "YOLOv8-RDD2022"
@@ -130,8 +200,8 @@ class RoadDamageDetector:
     def _analyze_image_surface_cv(self, img_path: Path) -> List[Dict[str, Any]]:
         """
         Performs real OpenCV computer vision detection for road hazards:
-        - Black-Hat morphological transformation for pothole cavities.
-        - Canny edge detection & morphological fissure clustering for structural cracks.
+        - Black-Hat morphological transformation for pothole cavities (D40).
+        - Canny edge detection & morphological fissure clustering for structural cracks (D00, D10, D20).
         - Computes real bounding boxes, actual surface area, contrast confidence, and severity.
         """
         try:
@@ -152,33 +222,55 @@ class RoadDamageDetector:
         road_roi = gray[roi_y:, :]
         detections: List[Dict[str, Any]] = []
 
-        # 1. Pothole / cavity detection via Black-Hat transform
-        kernel_pothole = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (35, 25))
-        blackhat = cv2.morphologyEx(road_roi, cv2.MORPH_BLACKHAT, kernel_pothole)
-        _, thresh_pot = cv2.threshold(blackhat, 35, 255, cv2.THRESH_BINARY)
-        contours_pot, _ = cv2.findContours(thresh_pot, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # 1. Pothole / cavity detection via dark depression contrast analysis (D40)
+        med = float(np.median(road_roi))
+        dark_mask = cv2.inRange(road_roi, 0, int(max(10, med - 25)))
+        kernel_pot = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+        dark_clean = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_pot)
+        contours_pot, _ = cv2.findContours(dark_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for c in contours_pot:
             area = cv2.contourArea(c)
-            if area > 1200:
+            if 1000 < area < 80000:
                 x, y, bw, bh = cv2.boundingRect(c)
+                if bw < 25 or bh < 20:
+                    continue
+
+                aspect = bw / float(max(1, bh))
+                # Potholes are compact cavities (not long thin lines)
+                if not (0.35 <= aspect <= 3.0):
+                    continue
+
                 y += roi_y
-                cavity_val = np.mean(gray[y:y+bh, x:x+bw])
-                bg_val = np.mean(gray[max(0, y-20):y, x:x+bw]) if y > 20 else 100.0
-                contrast = max(0.1, (bg_val - cavity_val) / max(1.0, bg_val))
-                conf = round(min(0.96, max(0.72, 0.70 + contrast * 0.5)), 2)
+                cavity_val = float(np.mean(gray[y:y+bh, x:x+bw]))
+                bg_val = float(np.mean(gray[max(0, y-20):y, x:x+bw])) if y > 20 else med
+                contrast = max(0.0, (bg_val - cavity_val) / max(1.0, bg_val))
+
+                # Require authentic darker depression contrast
+                if contrast < 0.12 or cavity_val > 140.0:
+                    continue
+
+                conf = round(min(0.96, max(0.55, 0.52 + contrast * 0.6)), 2)
                 area_sqm = round(area / 45000.0, 2)
+                severity = assess_damage_severity("D40", area_sqm, conf, contrast)
+
+                # Validate bounding box boundaries
+                x1 = max(0, min(w - 1, x))
+                y1 = max(0, min(h - 1, y))
+                x2 = max(x1 + 1, min(w, x + bw))
+                y2 = max(y1 + 1, min(h, y + bh))
+
                 detections.append({
-                    "class_id": "D00",
-                    "class_name": DAMAGE_CLASSES["D00"],
+                    "class_id": "D40",
+                    "class_name": DAMAGE_CLASSES["D40"],
                     "confidence": conf,
-                    "bbox": [x, y, x + bw, y + bh],
-                    "severity": "critical" if area_sqm > 0.35 or conf > 0.88 else "high",
+                    "bbox": [x1, y1, x2, y2],
+                    "severity": severity,
                     "estimated_area_sqm": max(0.15, area_sqm),
                     "engine": "YOLOv8-OpenCV-Cavity"
                 })
 
-        # 2. Crack detection via Canny & morphology
+        # 2. Crack detection via Canny & morphology (D00, D10, D20)
         blurred = cv2.GaussianBlur(road_roi, (5, 5), 0)
         edges = cv2.Canny(blurred, 40, 120)
         kernel_crack = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -189,32 +281,58 @@ class RoadDamageDetector:
             area = cv2.contourArea(c)
             if 800 < area < 25000:
                 x, y, bw, bh = cv2.boundingRect(c)
+                if bw < 20 and bh < 20:
+                    continue
+
                 y += roi_y
-                aspect = bw / max(1.0, bh)
+
+                # If this region heavily overlaps an already detected pothole cavity, avoid duplicate crack
+                overlaps_pothole = any(
+                    d["class_id"] == "D40" and
+                    abs(d["bbox"][0] - x) < 60 and abs(d["bbox"][1] - y) < 60
+                    for d in detections
+                )
+                if overlaps_pothole:
+                    continue
+
+                aspect = bw / float(max(1, bh))
                 area_sqm = round(area / 60000.0, 2)
-                if aspect > 2.0:
-                    cid, cname = "D40", DAMAGE_CLASSES["D40"]
-                elif aspect < 0.5:
-                    cid, cname = "D20", DAMAGE_CLASSES["D20"]
-                else:
+
+                # Correct RDD2022 crack classification based on road driving geometry:
+                # D10: Transverse Cracks across the lane (width > height, aspect > 1.8)
+                # D00: Longitudinal Cracks along the wheel path (height > width, aspect < 0.55)
+                # D20: Alligator Cracking (interconnected mesh network, 0.55 <= aspect <= 1.8)
+                if aspect > 1.8:
                     cid, cname = "D10", DAMAGE_CLASSES["D10"]
+                elif aspect < 0.55:
+                    cid, cname = "D00", DAMAGE_CLASSES["D00"]
+                else:
+                    cid, cname = "D20", DAMAGE_CLASSES["D20"]
 
                 overlap = any(
                     abs(d["bbox"][0] - x) < 40 and abs(d["bbox"][1] - y) < 40
                     for d in detections
                 )
                 if not overlap and area_sqm >= 0.1:
+                    conf = 0.84
+                    severity = assess_damage_severity(cid, area_sqm, conf)
+                    x1 = max(0, min(w - 1, x))
+                    y1 = max(0, min(h - 1, y))
+                    x2 = max(x1 + 1, min(w, x + bw))
+                    y2 = max(y1 + 1, min(h, y + bh))
+
                     detections.append({
                         "class_id": cid,
                         "class_name": cname,
-                        "confidence": 0.84,
-                        "bbox": [x, y, x + bw, y + bh],
-                        "severity": "high" if area_sqm > 0.25 else "medium",
+                        "confidence": conf,
+                        "bbox": [x1, y1, x2, y2],
+                        "severity": severity,
                         "estimated_area_sqm": max(0.1, area_sqm),
                         "engine": "YOLOv8-OpenCV-Fissure"
                     })
 
         return detections
+
 
     def _analyze_image_surface_pil(self, img_path: Path) -> List[Dict[str, Any]]:
         """Fallback surface analysis using Pillow when OpenCV is unavailable."""

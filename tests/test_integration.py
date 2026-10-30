@@ -23,7 +23,15 @@ def test_full_urban_infrastructure_lifecycle():
     6. Repair Verification (Dev 5 & 1)
     """
     print("\n--- [E2E STEP 1 & 2] Vehicle Telemetry & Image Ingestion + AI Inference ---")
-    fake_image_bytes = b"\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xFF\xDB"
+    import cv2
+    import numpy as np
+    frame = np.full((480, 640, 3), 85, dtype=np.uint8)
+    noise = np.random.randint(-15, 15, (480, 640, 3), dtype=np.int16)
+    frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    cv2.line(frame, (60, 480), (300, 150), (210, 210, 210), 4)
+    cv2.ellipse(frame, (320, 260), (75, 50), 0, 0, 360, (25, 25, 25), -1)
+    ret, buf = cv2.imencode(".jpg", frame)
+    fake_image_bytes = buf.tobytes()
     upload_response = client.post(
         "/api/v1/observations/upload",
         files={"file": ("test_road_frame.jpg", io.BytesIO(fake_image_bytes), "image/jpeg")},
@@ -58,11 +66,17 @@ def test_full_urban_infrastructure_lifecycle():
     assert len(geojson["features"]) > 0
 
     print("--- [E2E STEP 6] Post-Repair Audit & Verification ---")
+    rep_frame = np.full((480, 640, 3), 75, dtype=np.uint8)
+    rep_noise = np.random.randint(-8, 8, (480, 640, 3), dtype=np.int16)
+    rep_frame = np.clip(rep_frame.astype(np.int16) + rep_noise, 0, 255).astype(np.uint8)
+    _, rep_buf = cv2.imencode(".jpg", rep_frame)
+    repaired_bytes = rep_buf.tobytes()
+
     repairs_list = client.get("/api/v1/repairs").json()["data"]
     test_repair_id = repairs_list[0]["repair_id"] if repairs_list else "REP-CHD-2026-01"
     repair_verify_res = client.post(
         f"/api/v1/repairs/verify/{test_repair_id}",
-        files={"after_file": ("repaired_road.jpg", io.BytesIO(fake_image_bytes), "image/jpeg")}
+        files={"after_file": ("repaired_road.jpg", io.BytesIO(repaired_bytes), "image/jpeg")}
     )
     assert repair_verify_res.status_code == 200
     repair_result = repair_verify_res.json()["data"]
