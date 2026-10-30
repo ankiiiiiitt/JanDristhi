@@ -4,7 +4,7 @@ import UnifiedAppView from './components/UnifiedAppView';
 import UploadModal from './components/UploadModal';
 import AuthPortal from './components/AuthPortal';
 import LandingPage from './components/LandingPage';
-import { Smartphone, Monitor, LogOut, ShieldCheck } from 'lucide-react';
+import { Smartphone, Monitor, LogOut, ShieldCheck, Sparkles } from 'lucide-react';
 import { fetchOverview, fetchRoadsGeoJSON, fetchObservations, fetchRepairs, checkSystemHealth } from './services/api';
 
 export default function App() {
@@ -125,27 +125,30 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans select-none relative">
+    <div className="min-h-screen bg-[#f7faf9] text-slate-900 flex flex-col font-sans select-none relative">
       {/* ─────────────────────────────────────────────────────────────
           GLOBAL TOP PLATFORM SWITCHER & AUTH HEADER (Sticky Floating Bar)
          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-[#091122] border-b border-slate-800 px-3 sm:px-5 py-2 flex items-center justify-between text-xs z-50 sticky top-0 shadow-md gap-2">
-        <div className="flex items-center space-x-2">
-          <span className="font-extrabold text-white text-sm">Jan<span className="text-emerald-400">Drishti</span></span>
-          <span className="text-slate-500 hidden sm:inline">|</span>
-          <span className="text-slate-400 text-[11px] hidden md:inline">Portal:</span>
+      <div className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 py-2.5 flex items-center justify-between text-xs z-50 sticky top-0 shadow-xs gap-3">
+        <div className="flex items-center space-x-2.5">
+          <span className="grid place-items-center size-7 rounded-lg bg-[#0d4d41] text-emerald-200 shadow-xs">
+            <Sparkles size={14} />
+          </span>
+          <span className="font-extrabold text-slate-950 text-sm">Jan<span className="text-[#145547]">Drishti</span></span>
+          <span className="text-slate-300 hidden sm:inline">|</span>
+          <span className="text-slate-500 text-[11px] hidden md:inline font-semibold">Urban Infrastructure Platform</span>
         </div>
 
         {/* ROLE-BASED ACCESS CONTROL (RBAC) */}
         {currentUser.role === 'citizen' ? (
           /* CITIZEN PORTAL BADGE: Citizen CANNOT switch to or access Developer/Engineer UI */
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 font-bold text-xs shadow-sm">
-            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#f0f7f4] border border-emerald-200/80 text-[#145547] font-bold text-xs shadow-xs">
+            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
             <span>Citizen Field Inspection Mode</span>
           </div>
         ) : (
           /* DEVELOPER / MUNICIPAL ENGINEER CONTROLS */
-          <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 p-1 rounded-xl">
+          <div className="flex items-center space-x-1 bg-slate-100/90 border border-slate-200/80 p-1 rounded-xl">
             <button
               onClick={() => {
                 setActivePlatform('developer');
@@ -153,8 +156,8 @@ export default function App() {
               }}
               className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
                 activePlatform === 'developer'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#145547] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Monitor className="h-3.5 w-3.5" />
@@ -169,8 +172,8 @@ export default function App() {
               }}
               className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all text-xs ${
                 activePlatform === 'user'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#145547] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Smartphone className="h-3.5 w-3.5" />
@@ -182,15 +185,15 @@ export default function App() {
 
         {/* Authenticated User Profile Pill & Logout Button */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 px-2 py-1 rounded-xl">
+          <div className="flex items-center space-x-2 bg-white border border-slate-200/90 px-2.5 py-1 rounded-xl shadow-xs">
             <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-slate-950 ${
-              currentUser.role === 'developer' ? 'bg-purple-400' : 'bg-emerald-400'
+              currentUser.role === 'developer' ? 'bg-emerald-200 text-[#0d4d41]' : 'bg-emerald-100 text-[#145547]'
             }`}>
               {currentUser.avatar || (currentUser.name ? currentUser.name[0] : 'U')}
             </div>
             <div className="hidden sm:flex flex-col text-left leading-none">
-              <span className="font-bold text-white text-[11px] truncate max-w-[110px]">{currentUser.name}</span>
-              <span className="text-[9px] text-slate-400 font-medium">
+              <span className="font-bold text-slate-900 text-[11px] truncate max-w-[110px]">{currentUser.name}</span>
+              <span className="text-[9px] text-slate-500 font-medium">
                 {currentUser.role === 'developer' ? 'Municipal Engineer' : 'Citizen User'}
               </span>
             </div>
@@ -198,7 +201,7 @@ export default function App() {
 
           <button
             onClick={handleLogout}
-            className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 border border-slate-700/80 text-xs font-semibold text-slate-300 flex items-center space-x-1 transition-colors"
+            className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200/90 text-xs font-semibold text-slate-600 flex items-center space-x-1 transition-all shadow-xs"
             title="Log Out & Switch Portal Role"
           >
             <LogOut className="w-3.5 h-3.5" />

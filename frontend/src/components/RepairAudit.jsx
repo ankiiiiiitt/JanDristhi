@@ -41,10 +41,10 @@ export default function RepairAudit({ repairs, onRefresh }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold text-slate-100">Municipal Repair Verification Audit (Chandigarh)</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Municipal Repair Verification Audit</h2>
+          <p className="text-xs text-slate-500 max-w-2xl mt-0.5">
             Closed-loop contractor verification comparing pre-repair road hazards with post-resurfacing imagery.
             Repairs are only marked verified when AI confirms structural damage is cleared.
           </p>
@@ -60,26 +60,28 @@ export default function RepairAudit({ repairs, onRefresh }) {
           return (
             <div
               key={rep.repair_id}
-              className="bg-slate-800/90 border border-slate-700/80 rounded-xl overflow-hidden shadow-lg flex flex-col justify-between"
+              className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div className="p-5">
                 {/* Status Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-start justify-between mb-4">
                   <div>
-                    <span className="text-xs font-mono text-slate-400">{rep.repair_id}</span>
-                    <h3 className="font-semibold text-slate-100 text-sm">{rep.segment_id}</h3>
-                    <p className="text-xs text-slate-400">Contractor: {rep.contractor_name}</p>
-                    {rep.sector && <span className="text-[11px] text-emerald-400 font-medium">Area: {rep.sector}</span>}
+                    <span className="text-[11px] font-mono font-bold text-[#145547] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                      {rep.repair_id}
+                    </span>
+                    <h3 className="font-bold text-slate-900 text-sm mt-1.5">{rep.segment_id}</h3>
+                    <p className="text-xs text-slate-500">Contractor: <span className="font-semibold text-slate-700">{rep.contractor_name}</span></p>
+                    {rep.sector && <span className="text-[11px] text-[#145547] font-semibold">Area: {rep.sector}</span>}
                   </div>
                   <div>
                     {isVerified ? (
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#145547] border border-emerald-200">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                         <span>Verified Closed</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                        <Clock className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        <Clock className="h-3.5 w-3.5 text-amber-600" />
                         <span>Audit Pending</span>
                       </span>
                     )}
@@ -89,8 +91,8 @@ export default function RepairAudit({ repairs, onRefresh }) {
                 {/* Before / After Photos */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="space-y-1">
-                    <span className="text-[11px] font-medium text-rose-400 uppercase tracking-wide">Before (Hazard)</span>
-                    <div className="h-32 rounded-lg overflow-hidden border border-rose-500/30 bg-slate-900">
+                    <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Before (Hazard)</span>
+                    <div className="h-32 rounded-xl overflow-hidden border border-rose-200 bg-slate-100 shadow-xs">
                       <img
                         src={rep.before_image_url || "/images/roads/road_pothole_d00.jpg"}
                         alt="Before Repair"
@@ -104,9 +106,9 @@ export default function RepairAudit({ repairs, onRefresh }) {
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-emerald-400 uppercase tracking-wide">After (Work Done)</span>
+                      <span className="text-[10px] font-bold text-[#145547] uppercase tracking-wider">After (Work Done)</span>
                       {!isVerified && (
-                        <label className="text-[10px] text-slate-400 hover:text-emerald-400 cursor-pointer flex items-center space-x-1">
+                        <label className="text-[10px] text-[#145547] font-bold hover:underline cursor-pointer flex items-center space-x-1">
                           <Upload className="h-3 w-3" />
                           <span>Upload Photo</span>
                           <input
@@ -118,7 +120,7 @@ export default function RepairAudit({ repairs, onRefresh }) {
                         </label>
                       )}
                     </div>
-                    <div className="h-32 rounded-lg overflow-hidden border border-emerald-500/30 bg-slate-900 relative group">
+                    <div className="h-32 rounded-xl overflow-hidden border border-emerald-200 bg-slate-100 relative group shadow-xs">
                       <img
                         src={previewUrl}
                         alt="After Repair"
@@ -129,7 +131,7 @@ export default function RepairAudit({ repairs, onRefresh }) {
                         }}
                       />
                       {selectedFiles[rep.repair_id] && (
-                        <span className="absolute bottom-1 right-1 bg-black/80 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded">
+                        <span className="absolute bottom-1 right-1 bg-white/95 text-[#145547] font-bold text-[10px] px-2 py-0.5 rounded shadow-sm border border-emerald-200">
                           New Photo Ready
                         </span>
                       )}
@@ -139,17 +141,17 @@ export default function RepairAudit({ repairs, onRefresh }) {
 
                 {/* AI Audit Feedback */}
                 {feedback && (
-                  <div className={`p-3 rounded-lg border text-xs space-y-1 mb-2 ${
+                  <div className={`p-3.5 rounded-xl border text-xs space-y-1.5 mb-2 ${
                     feedback.damage_cleared
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                      : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-rose-50 border-rose-200 text-rose-900'
                   }`}>
-                    <div className="flex items-center space-x-1.5 font-semibold">
-                      <Sparkles className="h-3.5 w-3.5" />
+                    <div className="flex items-center space-x-1.5 font-bold">
+                      <Sparkles className="h-3.5 w-3.5 text-[#145547]" />
                       <span>AI Verification Result: {feedback.damage_cleared ? "APPROVED" : "REJECTED"}</span>
                     </div>
-                    <p className="text-slate-200">{feedback.message}</p>
-                    <p className="text-slate-400 text-[11px]">
+                    <p className="text-slate-700">{feedback.message}</p>
+                    <p className="text-slate-500 text-[11px] font-medium">
                       Confidence: {Math.round((feedback.ai_verification_score || 0.95) * 100)}% | Damage Cleared: {feedback.damage_cleared ? "Yes" : "No"}
                     </p>
                   </div>
@@ -157,15 +159,15 @@ export default function RepairAudit({ repairs, onRefresh }) {
               </div>
 
               {/* Action Footer */}
-              <div className="p-4 bg-slate-900/60 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs text-slate-400">
+              <div className="p-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">
                   {isVerified ? "Audited & municipal sign-off complete" : "Requires AI Before/After verification"}
                 </span>
                 {!isVerified && (
                   <button
                     onClick={() => handleVerify(rep.repair_id)}
                     disabled={verifyingId === rep.repair_id}
-                    className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-xs transition-all disabled:opacity-50"
+                    className="flex items-center space-x-1.5 bg-[#145547] hover:bg-[#0d4339] text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-md shadow-emerald-950/15 disabled:opacity-50"
                   >
                     {verifyingId === rep.repair_id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

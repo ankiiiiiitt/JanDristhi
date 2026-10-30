@@ -540,20 +540,20 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-tr from-emerald-500 to-cyan-500 p-2.5 rounded-xl text-slate-950 font-bold shadow-md shadow-emerald-500/20">
+            <div className="bg-emerald-50 text-[#145547] border border-emerald-200 p-2.5 rounded-xl font-bold shadow-xs">
               <Smartphone className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-bold text-slate-100">Android Chrome Mobile Collector</h2>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <h2 className="text-lg font-bold text-slate-900">Android Chrome Mobile Collector</h2>
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-[#145547] border border-emerald-200">
                   SMARTPHONE IMU
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Transforms any smartphone into a synchronized visual + inertial road surface inspection unit.
               </p>
             </div>
@@ -562,18 +562,18 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
           {/* Secure Context & WakeLock Badges */}
           <div className="flex items-center space-x-2 text-xs">
             {isSecure ? (
-              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-emerald-50 text-[#145547] border border-emerald-200 font-medium">
                 <Check className="h-3 w-3" />
                 <span>Secure Origin (HTTPS/Localhost)</span>
               </span>
             ) : (
-              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
                 <AlertTriangle className="h-3 w-3" />
                 <span>Insecure Context</span>
               </span>
             )}
             {wakeLockActive && (
-              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 animate-pulse">
+              <span className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium animate-pulse">
                 <span>Foreground Lock Active</span>
               </span>
             )}
@@ -584,78 +584,78 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
       {/* SECTION 1: SEPARATE TEST BUTTONS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Test 1: Camera */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+        <div className="bg-white border border-slate-200/90 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                <Camera className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs font-semibold text-slate-800 flex items-center space-x-1.5">
+                <Camera className="h-4 w-4 text-[#145547]" />
                 <span>1. Rear Camera</span>
               </span>
               {cameraTestStatus.tested && (
                 cameraTestStatus.ok ? (
-                  <span className="text-emerald-400 flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Ready</span>
+                  <span className="text-[#145547] font-semibold flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Ready</span>
                 ) : (
-                  <span className="text-rose-400 flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
+                  <span className="text-rose-600 font-semibold flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
                 )
               )}
             </div>
-            <p className="text-[11px] text-slate-400 min-h-[32px]">{cameraTestStatus.message}</p>
+            <p className="text-[11px] text-slate-500 min-h-[32px]">{cameraTestStatus.message}</p>
           </div>
           <button
             onClick={handleTestCamera}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-1.5 px-3 rounded-lg text-xs transition-colors border border-slate-200/80"
           >
             Test Camera
           </button>
         </div>
 
         {/* Test 2: GPS */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+        <div className="bg-white border border-slate-200/90 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                <Compass className="h-4 w-4 text-cyan-400" />
+              <span className="text-xs font-semibold text-slate-800 flex items-center space-x-1.5">
+                <Compass className="h-4 w-4 text-blue-600" />
                 <span>2. Geolocation (GPS)</span>
               </span>
               {gpsTestStatus.tested && (
                 gpsTestStatus.ok ? (
-                  <span className="text-emerald-400 flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Fixed</span>
+                  <span className="text-[#145547] font-semibold flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Fixed</span>
                 ) : (
-                  <span className="text-rose-400 flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
+                  <span className="text-rose-600 font-semibold flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
                 )
               )}
             </div>
-            <p className="text-[11px] text-slate-400 min-h-[32px]">{gpsTestStatus.message}</p>
+            <p className="text-[11px] text-slate-500 min-h-[32px]">{gpsTestStatus.message}</p>
           </div>
           <button
             onClick={handleTestGps}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-1.5 px-3 rounded-lg text-xs transition-colors border border-slate-200/80"
           >
             Test GPS Fix
           </button>
         </div>
 
         {/* Test 3: Accelerometer */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+        <div className="bg-white border border-slate-200/90 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                <Activity className="h-4 w-4 text-amber-400" />
+              <span className="text-xs font-semibold text-slate-800 flex items-center space-x-1.5">
+                <Activity className="h-4 w-4 text-amber-600" />
                 <span>3. Motion Sensor (IMU)</span>
               </span>
               {accelTestStatus.tested && (
                 accelTestStatus.ok ? (
-                  <span className="text-emerald-400 flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Active</span>
+                  <span className="text-[#145547] font-semibold flex items-center text-[11px]"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Active</span>
                 ) : (
-                  <span className="text-rose-400 flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
+                  <span className="text-rose-600 font-semibold flex items-center text-[11px]"><X className="h-3.5 w-3.5 mr-1" /> Error</span>
                 )
               )}
             </div>
-            <p className="text-[11px] text-slate-400 min-h-[32px]">{accelTestStatus.message}</p>
+            <p className="text-[11px] text-slate-500 min-h-[32px]">{accelTestStatus.message}</p>
           </div>
           <button
             onClick={handleTestAccelerometer}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-1.5 px-3 rounded-lg text-xs transition-colors border border-slate-200/80"
           >
             Test Accelerometer
           </button>
@@ -663,7 +663,7 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
       </div>
 
       {/* SECTION 2: LIVE CAMERA PREVIEW & HUD */}
-      <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black">
+      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-black">
         {/* Camera Video View */}
         <div className="relative aspect-video w-full max-h-[460px] bg-slate-950 flex items-center justify-center">
           <video
@@ -675,85 +675,85 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
           />
 
           {!streamRef.current && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 bg-slate-950/80 space-y-2 p-4 text-center">
-              <Camera className="h-10 w-10 text-slate-600" />
-              <p className="text-sm font-medium text-slate-300">Live Camera Standby</p>
-              <p className="text-xs text-slate-500 max-w-sm">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-950/80 space-y-2 p-4 text-center">
+              <Camera className="h-10 w-10 text-slate-500" />
+              <p className="text-sm font-semibold text-white">Live Camera Standby</p>
+              <p className="text-xs text-slate-400 max-w-sm">
                 Tap "Test Camera" or "Start Monitoring" to activate your device's road-facing rear camera.
               </p>
             </div>
           )}
 
           {/* Real-time On-Screen HUD Overlay */}
-          <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur border border-slate-700/80 rounded-lg p-2.5 text-xs text-slate-200 space-y-1 z-10 shadow-lg">
+          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 space-y-1 z-10 shadow-sm">
             <div className="flex items-center space-x-2">
-              <span className={`w-2 h-2 rounded-full ${isMonitoring ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'}`} />
-              <b className="text-[11px] uppercase tracking-wider text-slate-300">
+              <span className={`w-2 h-2 rounded-full ${isMonitoring ? 'bg-rose-500 animate-ping' : 'bg-[#145547]'}`} />
+              <b className="text-[11px] uppercase tracking-wider text-slate-900 font-bold">
                 {isMonitoring ? `Recording [${elapsedSeconds}s]` : 'Standby HUD'}
               </b>
             </div>
-            <div className="text-[11px] text-slate-300">
-              GPS: <b className="text-emerald-400">{liveGps.latitude.toFixed(5)}, {liveGps.longitude.toFixed(5)}</b>
+            <div className="text-[11px] text-slate-700">
+              GPS: <b className="text-[#145547] font-bold">{liveGps.latitude.toFixed(5)}, {liveGps.longitude.toFixed(5)}</b>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Accuracy: <b>±{liveGps.accuracy}m</b> | Speed: <b className="text-cyan-400">{liveGps.speed} km/h</b>
+            <div className="text-[11px] text-slate-500">
+              Accuracy: <b className="text-slate-800">±{liveGps.accuracy}m</b> | Speed: <b className="text-blue-600 font-bold">{liveGps.speed} km/h</b>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Calibrated Shock: <b className={`${liveAccel.calibrated_z_shock > 2.5 ? 'text-rose-400' : 'text-amber-300'}`}>
+            <div className="text-[11px] text-slate-500">
+              Calibrated Shock: <b className={`${liveAccel.calibrated_z_shock > 2.5 ? 'text-rose-600 font-bold' : 'text-amber-600 font-bold'}`}>
                 {liveAccel.calibrated_z_shock} m/s²
               </b>
             </div>
           </div>
 
           {/* Source Attribution Watermark */}
-          <div className="absolute bottom-3 left-3 bg-slate-950/80 px-2 py-1 rounded text-[10px] text-slate-400 border border-slate-800">
-            Source: <b className="text-emerald-400">PHONE_IMU_SMARTPHONE</b> (Separate from MPU6050)
+          <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded text-[10px] text-slate-700 border border-slate-200 shadow-xs">
+            Source: <b className="text-[#145547] font-bold">PHONE_IMU_SMARTPHONE</b> (Separate from MPU6050)
           </div>
         </div>
 
         {/* Live Sensor Metrics Dashboard Bar */}
-        <div className="bg-slate-900/95 border-t border-slate-800 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Raw Triaxial (X/Y/Z)</span>
-            <div className="font-mono text-xs text-slate-200 mt-1">
-              X: <b className="text-cyan-300">{liveAccel.x}</b> | Y: <b className="text-emerald-300">{liveAccel.y}</b> | Z: <b className="text-indigo-300">{liveAccel.z}</b>
+        <div className="bg-white border-t border-slate-200/90 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Raw Triaxial (X/Y/Z)</span>
+            <div className="font-mono text-xs text-slate-800 mt-1">
+              X: <b className="text-blue-600">{liveAccel.x}</b> | Y: <b className="text-[#145547]">{liveAccel.y}</b> | Z: <b className="text-purple-600">{liveAccel.z}</b>
             </div>
-            <span className="text-[10px] text-slate-500">Units: m/s²</span>
+            <span className="text-[10px] text-slate-400">Units: m/s²</span>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Calibrated Z-Shock</span>
-            <div className={`font-mono text-base font-bold mt-0.5 ${liveAccel.calibrated_z_shock > 2.5 ? 'text-rose-400' : 'text-emerald-400'}`}>
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Calibrated Z-Shock</span>
+            <div className={`font-mono text-base font-bold mt-0.5 ${liveAccel.calibrated_z_shock > 2.5 ? 'text-rose-600' : 'text-[#145547]'}`}>
               {liveAccel.calibrated_z_shock} m/s²
             </div>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               {mountCalibration.isCalibrated ? 'Gravity-compensated' : 'Uncalibrated baseline'}
             </span>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Orientation (Pitch/Roll)</span>
-            <div className="font-mono text-xs text-slate-200 mt-1">
-              β: <b className="text-slate-100">{liveOrientation.beta}°</b> | γ: <b className="text-slate-100">{liveOrientation.gamma}°</b>
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Orientation (Pitch/Roll)</span>
+            <div className="font-mono text-xs text-slate-800 mt-1">
+              β: <b className="text-slate-900">{liveOrientation.beta}°</b> | γ: <b className="text-slate-900">{liveOrientation.gamma}°</b>
             </div>
-            <span className="text-[10px] text-slate-500">Heading: {liveGps.heading}°</span>
+            <span className="text-[10px] text-slate-400">Heading: {liveGps.heading}°</span>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Mount Calibration</span>
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Mount Calibration</span>
             <div className="mt-1">
               {mountCalibration.isCalibrated ? (
-                <span className="text-emerald-400 font-semibold flex items-center text-xs">
+                <span className="text-[#145547] font-semibold flex items-center text-xs">
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Calibrated
                 </span>
               ) : (
-                <span className="text-amber-400 font-medium text-xs">Not Calibrated</span>
+                <span className="text-amber-600 font-medium text-xs">Not Calibrated</span>
               )}
             </div>
             <button
               onClick={handleCalibrateMount}
               disabled={isCalibrating || isMonitoring}
-              className="mt-1 text-[10px] text-cyan-400 hover:text-cyan-300 underline font-medium disabled:opacity-50"
+              className="mt-1 text-[10px] text-[#145547] hover:underline font-semibold disabled:opacity-50"
             >
               {isCalibrating ? 'Calibrating (keep still)...' : 'Calibrate Orientation'}
             </button>
@@ -762,12 +762,12 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
       </div>
 
       {/* SECTION 3: CONTROLS & MONITORING BAR */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200/90 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center space-x-3 w-full sm:w-auto">
           {!isMonitoring ? (
             <button
               onClick={handleStartMonitoring}
-              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-[#145547] hover:bg-[#0d4339] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-emerald-950/15"
             >
               <Play className="h-4 w-4 fill-current" />
               <span>Start Monitoring</span>
@@ -775,16 +775,16 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
           ) : (
             <button
               onClick={handleStopMonitoring}
-              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-rose-500 hover:bg-rose-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-rose-500/20 animate-pulse"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md animate-pulse"
             >
               <Square className="h-4 w-4 fill-current" />
               <span>Stop Monitoring ({elapsedSeconds}s)</span>
             </button>
           )}
 
-          <div className="text-xs text-slate-400 hidden md:block">
+          <div className="text-xs text-slate-500 hidden md:block">
             {isMonitoring ? (
-              <span className="text-emerald-400">Recording video & logging synchronized GPS/IMU packets...</span>
+              <span className="text-[#145547] font-medium">Recording video & logging synchronized GPS/IMU packets...</span>
             ) : (
               <span>Mount phone on windshield. Calibrate, then start session.</span>
             )}
@@ -794,13 +794,13 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
         {/* Upload Session Button */}
         {recordedTelemetry.length > 0 && !isMonitoring && (
           <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <span className="text-xs text-slate-400">
-              Session ready: <b className="text-slate-200">{recordedTelemetry.length} packets</b> ({elapsedSeconds}s)
+            <span className="text-xs text-slate-500">
+              Session ready: <b className="text-slate-800">{recordedTelemetry.length} packets</b> ({elapsedSeconds}s)
             </span>
             <button
               onClick={handleUploadSession}
               disabled={uploadStatus.loading}
-              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-[#145547] hover:bg-[#0d4339] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-emerald-950/15 disabled:opacity-50"
             >
               {uploadStatus.loading ? (
                 <>
@@ -820,61 +820,61 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
 
       {/* SECTION 4: UPLOAD & DETECTION RESULTS */}
       {uploadStatus.error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>Upload failed: {uploadStatus.error}</span>
         </div>
       )}
 
       {uploadStatus.result && (
-        <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 space-y-4">
+        <div className="bg-white border border-emerald-200 rounded-2xl p-5 space-y-4 shadow-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              <h3 className="font-bold text-slate-100 text-sm">
+              <CheckCircle2 className="h-5 w-5 text-[#145547]" />
+              <h3 className="font-bold text-slate-900 text-sm">
                 Session Analyzed: {uploadStatus.result.session_id}
               </h3>
             </div>
-            <span className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+            <span className="text-xs text-[#145547] font-semibold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
               {uploadStatus.result.hazards_detected} Hazards Identified
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span className="text-[10px] text-slate-400 block">Frames Analyzed</span>
-              <b className="text-sm text-slate-100">{uploadStatus.result.frames_processed}</b>
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] text-slate-500 block">Frames Analyzed</span>
+              <b className="text-sm text-slate-900">{uploadStatus.result.frames_processed}</b>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span className="text-[10px] text-slate-400 block">Peak Calibrated Shock</span>
-              <b className="text-sm text-rose-400">{uploadStatus.result.max_vertical_shock} m/s²</b>
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] text-slate-500 block">Peak Calibrated Shock</span>
+              <b className="text-sm text-rose-600">{uploadStatus.result.max_vertical_shock} m/s²</b>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span className="text-[10px] text-slate-400 block">Snapping Network</span>
-              <b className="text-sm text-emerald-400">Chandigarh OSM</b>
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] text-slate-500 block">Snapping Network</span>
+              <b className="text-sm text-[#145547]">Chandigarh OSM</b>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span className="text-[10px] text-slate-400 block">Database Storage</span>
-              <b className="text-sm text-slate-100">MongoDB Atlas</b>
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] text-slate-500 block">Database Storage</span>
+              <b className="text-sm text-slate-900">MongoDB Atlas</b>
             </div>
           </div>
 
           {/* Newly created observations cards */}
           {uploadStatus.result.observations && uploadStatus.result.observations.length > 0 && (
             <div className="space-y-2 pt-2">
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                 Newly Discovered Road Observations:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {uploadStatus.result.observations.map((obs) => {
                   const firstDet = obs.detections?.[0] || {};
                   return (
-                    <div key={obs.observation_id} className="p-3 rounded-xl bg-slate-800/90 border border-slate-700 flex space-x-3 text-xs">
+                    <div key={obs.observation_id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex space-x-3 text-xs shadow-xs">
                       {obs.annotated_image_url && (
                         <img
                           src={obs.annotated_image_url}
                           alt="Hazard Detection"
-                          className="w-20 h-20 rounded-lg object-cover border border-slate-700 shrink-0"
+                          className="w-20 h-20 rounded-lg object-cover border border-slate-200 shrink-0"
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = '/images/roads/road_pothole_d00.jpg';
@@ -883,12 +883,12 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
                       )}
                       <div className="space-y-1">
                         <div className="flex items-center space-x-1.5">
-                          <b className="text-slate-100 font-semibold">{firstDet.class_name || 'Road Hazard'}</b>
-                          <span className="text-[10px] text-emerald-400 font-mono">({Math.round((firstDet.confidence || 0.88)*100)}%)</span>
+                          <b className="text-slate-900 font-semibold">{firstDet.class_name || 'Road Hazard'}</b>
+                          <span className="text-[10px] text-[#145547] font-mono font-bold">({Math.round((firstDet.confidence || 0.88)*100)}%)</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 font-mono">{obs.observation_id}</p>
-                        <p className="text-[11px] text-slate-300">Road: <b className="text-emerald-400">{obs.matched_road_name}</b></p>
-                        <p className="text-[10px] text-slate-400">Sector: {obs.sector} | Shock: {obs.telemetry_z_shock} m/s²</p>
+                        <p className="text-[11px] text-slate-500 font-mono">{obs.observation_id}</p>
+                        <p className="text-[11px] text-slate-700">Road: <b className="text-[#145547] font-semibold">{obs.matched_road_name}</b></p>
+                        <p className="text-[10px] text-slate-500">Sector: {obs.sector} | Shock: {obs.telemetry_z_shock} m/s²</p>
                       </div>
                     </div>
                   );

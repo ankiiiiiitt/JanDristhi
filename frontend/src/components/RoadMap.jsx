@@ -405,19 +405,19 @@ export default function RoadMap({
         <button
           onClick={handleLocateMe}
           disabled={isLocating}
-          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-md transition-all ${
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all ${
             liveLocation
-              ? 'bg-blue-600 text-white shadow-blue-500/25 border border-blue-400'
-              : 'bg-slate-900/90 hover:bg-slate-800 text-blue-400 border border-blue-500/40 backdrop-blur'
+              ? 'bg-[#145547] text-white shadow-emerald-950/15 border border-[#145547]'
+              : 'bg-white/95 hover:bg-emerald-50 text-[#145547] border border-slate-200/90 backdrop-blur-md'
           }`}
           title="Click to center map at your real physical location"
         >
           <Crosshair className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-          <span>{isLocating ? 'Locating...' : '📍 My Real Location'}</span>
+          <span>{isLocating ? 'Locating...' : '📍 My Location'}</span>
         </button>
 
         {/* Demo Sectors Quick-Nav */}
-        <div className="hidden sm:flex items-center space-x-1 bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg p-1 text-xs">
+        <div className="hidden sm:flex items-center space-x-1 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl p-1 text-xs shadow-xs">
           {[
             { label: "Chandigarh", coords: [30.7333, 76.7794], zoom: 13 },
             { label: "Sector 17", coords: [30.7408, 76.7825], zoom: 15 },
@@ -426,7 +426,7 @@ export default function RoadMap({
             <button
               key={idx}
               onClick={() => handleZoomSector(sec.coords, sec.zoom)}
-              className="px-2 py-0.5 rounded text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-[#145547] hover:bg-emerald-50 transition-colors"
             >
               {sec.label}
             </button>
@@ -435,25 +435,25 @@ export default function RoadMap({
       </div>
 
       {/* Floating Controls (Top Right: Map / Satellite & Locate Pin) */}
-      <div className="absolute top-3 right-3 z-[1000] flex flex-col space-y-1.5 items-end">
+      <div className="absolute top-3 right-3 z-[1000] flex flex-col space-y-2 items-end">
         {/* Satellite vs Street Toggle */}
-        <div className="bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg p-0.5 shadow-lg flex items-center space-x-0.5 text-[11px]">
+        <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl p-1 shadow-sm flex items-center space-x-1 text-[11px]">
           <button
             onClick={() => handleToggleMapType('street')}
-            className={`px-2 py-1 rounded font-medium transition-all ${
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
               mapType === 'street'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#145547] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Map
           </button>
           <button
             onClick={() => handleToggleMapType('satellite')}
-            className={`px-2 py-1 rounded font-medium transition-all ${
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
               mapType === 'satellite'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#145547] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Satellite
@@ -463,7 +463,7 @@ export default function RoadMap({
         {/* Floating Quick GPS Re-center Button */}
         <button
           onClick={handleLocateMe}
-          className="w-8 h-8 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-emerald-400 hover:text-emerald-300 border border-slate-700/80 flex items-center justify-center shadow-lg transition-transform active:scale-95"
+          className="w-9 h-9 rounded-xl bg-white/95 hover:bg-emerald-50 text-[#145547] border border-slate-200/90 flex items-center justify-center shadow-sm transition-transform active:scale-95"
           title="Center on my location"
         >
           <Compass className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
@@ -472,10 +472,10 @@ export default function RoadMap({
 
       {/* Live Coordinates Pill at Bottom Left */}
       {liveLocation && (
-        <div className="absolute bottom-3 left-3 z-[1000] bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 flex items-center space-x-1.5 shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+        <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl px-3 py-1.5 text-[11px] text-slate-700 flex items-center space-x-1.5 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
           <span>
-            <b>Live GPS:</b> {liveLocation.lat.toFixed(4)}°, {liveLocation.lng.toFixed(4)}°
+            <b className="text-[#145547]">Live GPS:</b> {liveLocation.lat.toFixed(4)}°, {liveLocation.lng.toFixed(4)}°
             {liveLocation.city ? ` (${liveLocation.city})` : ''}
           </span>
         </div>
@@ -483,7 +483,7 @@ export default function RoadMap({
 
       {/* Error Toast */}
       {locationError && (
-        <div className="absolute bottom-12 left-3 right-3 z-[1000] bg-rose-950/90 border border-rose-700 text-rose-200 text-xs px-3 py-1.5 rounded-lg shadow-lg">
+        <div className="absolute bottom-12 left-3 right-3 z-[1000] bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2 rounded-xl shadow-md font-semibold">
           {locationError}
         </div>
       )}

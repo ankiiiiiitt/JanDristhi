@@ -544,45 +544,45 @@ export default function UserMobileApp({
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col items-center justify-start p-0 sm:py-6 sm:px-4">
+    <div className="min-h-screen bg-[#f7faf9] text-slate-900 flex flex-col items-center justify-start p-0 sm:py-6 sm:px-4 font-sans select-none">
       {/* ── PHONE SHELL CONTAINER ── */}
-      <div className="w-full max-w-md bg-[#0b1120] sm:border-4 sm:border-slate-800 sm:rounded-[40px] shadow-2xl flex flex-col min-h-screen sm:min-h-[780px] sm:max-h-[850px] relative overflow-hidden ring-1 ring-slate-700/50">
+      <div className="w-full max-w-md bg-white sm:border sm:border-slate-300 sm:rounded-[44px] shadow-2xl shadow-emerald-950/10 flex flex-col min-h-screen sm:min-h-[780px] sm:max-h-[850px] relative overflow-hidden ring-1 ring-slate-200/80">
         {/* Status Bar */}
-        <div className="pt-2 px-6 pb-1 flex items-center justify-between text-xs text-slate-400 font-semibold select-none z-20">
+        <div className="pt-2.5 px-6 pb-1 flex items-center justify-between text-xs text-slate-600 font-bold select-none z-20 bg-white">
           <span>9:41</span>
-          <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto hidden sm:block" />
+          <div className="w-20 h-4 bg-slate-200 rounded-full mx-auto hidden sm:block" />
           <div className="flex items-center space-x-1.5">
-            <span className="text-[10px]">5G</span>
-            <div className="w-4 h-2.5 border border-slate-400 rounded-sm p-0.5 flex items-center">
-              <div className="w-full h-full bg-slate-300 rounded-2xs" />
+            <span className="text-[10px] font-semibold text-slate-500">5G</span>
+            <div className="w-4 h-2.5 border border-slate-400 rounded-xs p-0.5 flex items-center">
+              <div className="w-full h-full bg-slate-600 rounded-2xs" />
             </div>
           </div>
         </div>
 
         {/* ── 1. LOGIN SCREEN ── */}
         {authScreen === 'login' && (
-          <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto bg-[#f7faf9]">
             <div className="text-center mt-2">
-              <div className="w-24 h-24 mx-auto mb-3 rounded-2xl overflow-hidden border border-slate-700 shadow-lg relative">
+              <div className="w-24 h-24 mx-auto mb-3 rounded-2xl overflow-hidden border border-slate-200 shadow-md relative">
                 <img
                   src="/images/roads/road_pothole_d00.jpg"
                   alt="City Heritage"
-                  className="w-full h-full object-cover filter brightness-90"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
               </div>
 
               <div className="flex items-center justify-center space-x-1.5">
-                <span className="text-2xl font-black text-white">Jan</span>
-                <span className="text-2xl font-black text-emerald-400">Drishti</span>
+                <span className="text-2xl font-black text-slate-950">Jan</span>
+                <span className="text-2xl font-black text-[#145547]">Drishti</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">Safer Roads • Smarter Cities</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">Safer Roads • Smarter Cities</p>
             </div>
 
-            <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 my-4 shadow-xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 my-4 shadow-sm">
               <div className="text-center mb-4">
-                <h3 className="text-base font-bold text-white">Citizen Login</h3>
-                <p className="text-[11px] text-slate-400">Report potholes & road damages in your sector</p>
+                <h3 className="text-base font-bold text-slate-900">Citizen Login</h3>
+                <p className="text-[11px] text-slate-500">Report potholes & road damages in your sector</p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-3">
@@ -593,7 +593,7 @@ export default function UserMobileApp({
                     placeholder="Email or Mobile"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                     required
                   />
                 </div>
@@ -605,13 +605,13 @@ export default function UserMobileApp({
                     placeholder="Password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-9 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-9 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-slate-400"
+                    className="absolute right-3 text-slate-400 hover:text-slate-600"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -619,24 +619,24 @@ export default function UserMobileApp({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 transition-all mt-2"
+                  className="w-full py-2.5 rounded-xl text-xs bg-[#145547] hover:bg-[#0d4339] text-white font-bold shadow-md shadow-emerald-950/15 transition-all mt-2 active:scale-98"
                 >
                   Login
                 </button>
               </form>
 
-              <div className="text-center text-[11px] text-slate-400 mt-3">
+              <div className="text-center text-[11px] text-slate-500 mt-3">
                 Don't have an account?{' '}
                 <button
                   onClick={() => setAuthScreen('signup')}
-                  className="text-emerald-400 font-bold hover:underline"
+                  className="text-[#145547] font-bold hover:underline"
                 >
                   Sign Up
                 </button>
               </div>
             </div>
 
-            <div className="text-center text-[10px] text-slate-500">
+            <div className="text-center text-[10px] text-slate-400">
               JanDrishti Field Surveillance • Powered by Municipal AI
             </div>
           </div>
@@ -644,19 +644,19 @@ export default function UserMobileApp({
 
         {/* ── 2. SIGNUP SCREEN ── */}
         {authScreen === 'signup' && (
-          <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto bg-[#f7faf9]">
             <div className="text-center mt-2">
               <div className="flex items-center justify-center space-x-1.5">
-                <span className="text-2xl font-black text-white">Jan</span>
-                <span className="text-2xl font-black text-emerald-400">Drishti</span>
+                <span className="text-2xl font-black text-slate-950">Jan</span>
+                <span className="text-2xl font-black text-[#145547]">Drishti</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">Safer Roads • Smarter Cities</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">Safer Roads • Smarter Cities</p>
             </div>
 
-            <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 my-3 shadow-xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 my-3 shadow-sm">
               <div className="text-center mb-3">
-                <h3 className="text-base font-bold text-white">Create Citizen Account</h3>
-                <p className="text-[11px] text-slate-400">Join to report road hazards and earn badges</p>
+                <h3 className="text-base font-bold text-slate-900">Create Citizen Account</h3>
+                <p className="text-[11px] text-slate-500">Join to report road hazards and earn badges</p>
               </div>
 
               <form onSubmit={handleSignup} className="space-y-2.5">
@@ -667,7 +667,7 @@ export default function UserMobileApp({
                     placeholder="Full Name"
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                     required
                   />
                 </div>
@@ -679,7 +679,7 @@ export default function UserMobileApp({
                     placeholder="Mobile Number"
                     value={signupPhone}
                     onChange={(e) => setSignupPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                     required
                   />
                 </div>
@@ -691,7 +691,7 @@ export default function UserMobileApp({
                     placeholder="Email (Optional)"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                   />
                 </div>
 
@@ -702,13 +702,13 @@ export default function UserMobileApp({
                     placeholder="Password"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-9 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-9 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-2 focus:ring-[#145547]/15 transition"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-slate-400"
+                    className="absolute right-3 text-slate-400 hover:text-slate-600"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -716,24 +716,24 @@ export default function UserMobileApp({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all mt-2"
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#145547] hover:bg-[#0d4339] text-white shadow-md shadow-emerald-950/15 transition-all mt-2 active:scale-98"
                 >
                   Sign Up
                 </button>
               </form>
 
-              <div className="text-center text-[11px] text-slate-400 mt-3">
+              <div className="text-center text-[11px] text-slate-500 mt-3">
                 Already have an account?{' '}
                 <button
                   onClick={() => setAuthScreen('login')}
-                  className="text-emerald-400 font-bold hover:underline"
+                  className="text-[#145547] font-bold hover:underline"
                 >
                   Login
                 </button>
               </div>
             </div>
 
-            <div className="text-center text-[10px] text-slate-500">
+            <div className="text-center text-[10px] text-slate-400">
               By signing up, you agree to Municipal Citizen Terms
             </div>
           </div>
@@ -741,30 +741,30 @@ export default function UserMobileApp({
 
         {/* ── 3. MAIN FIELD USER APP ── */}
         {authScreen === 'app' && (
-          <div className="flex-1 flex flex-col justify-between overflow-hidden">
+          <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#f7faf9]">
             {/* Header */}
-            <div className="px-5 pt-3 pb-2 flex items-center justify-between border-b border-slate-800/80 bg-[#0c1427]/80">
+            <div className="px-5 pt-3 pb-2.5 flex items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center font-bold text-xs text-emerald-300">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center font-bold text-xs text-[#145547]">
                   {currentUser.avatar}
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400">Hello</p>
-                  <p className="text-xs font-bold text-white">{currentUser.name}</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">Hello,</p>
+                  <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
-                  <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-emerald-400'}`} />
-                  <span className="font-semibold max-w-[95px] truncate">{userCoords.city || 'Chandigarh'}</span>
-                  <span className="text-slate-600">•</span>
-                  <span className="text-slate-400">{userCoords.isReal ? 'Live GPS' : '28°C'}</span>
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#f0f7f4] border border-emerald-200/80 text-[10px] text-[#145547] font-semibold">
+                  <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-500 animate-pulse' : 'text-[#145547]'}`} />
+                  <span className="font-bold max-w-[95px] truncate">{userCoords.city || 'Chandigarh'}</span>
+                  <span className="text-emerald-300">•</span>
+                  <span className="text-slate-500">{userCoords.isReal ? 'Live GPS' : '28°C'}</span>
                 </div>
                 {onLogout && (
                   <button
                     onClick={onLogout}
-                    className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 transition-colors"
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-rose-700 hover:border-rose-200 hover:bg-rose-50 transition-colors shadow-xs"
                     title="Logout & Return to Login Portal"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -780,54 +780,54 @@ export default function UserMobileApp({
                 <>
                   <div
                     onClick={() => setUserTab('record')}
-                    className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-slate-950 flex items-center justify-between cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-98 transition-transform"
+                    className="p-4 rounded-2xl bg-gradient-to-r from-[#145547] to-[#1e6f5c] text-white flex items-center justify-between cursor-pointer shadow-md shadow-emerald-950/15 active:scale-98 transition-transform group"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center">
-                        <Camera className="h-6 w-6 text-slate-950" />
+                      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-xs">
+                        <Camera className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-sm text-slate-950">Start Recording</h4>
-                        <p className="text-[11px] text-slate-900/80 font-medium">
-                          Capture road video or photo to detect potholes and cracks
+                        <h4 className="font-extrabold text-sm text-white">Start Recording</h4>
+                        <p className="text-[11px] text-emerald-100 font-medium">
+                          Capture road photo with live GPS to detect potholes & cracks
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-slate-950" />
+                    <ChevronRight className="h-5 w-5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div
                       onClick={() => setUserTab('map')}
-                      className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center space-x-3 transition-colors"
+                      className="p-3.5 rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-300 hover:bg-[#f0f7f4] cursor-pointer flex items-center space-x-3 transition-all shadow-xs"
                     >
-                      <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400">
+                      <div className="p-2.5 rounded-xl bg-emerald-50 text-[#145547]">
                         <MapPin className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-white">View Map</p>
-                        <p className="text-[10px] text-slate-400">See reported</p>
+                        <p className="text-xs font-bold text-slate-900">View Map</p>
+                        <p className="text-[10px] text-slate-500 font-medium">See reported pins</p>
                       </div>
                     </div>
 
                     <div
                       onClick={() => setUserTab('reports')}
-                      className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center space-x-3 transition-colors"
+                      className="p-3.5 rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-300 hover:bg-[#f0f7f4] cursor-pointer flex items-center space-x-3 transition-all shadow-xs"
                     >
-                      <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400">
+                      <div className="p-2.5 rounded-xl bg-emerald-50 text-[#145547]">
                         <FileText className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-white">My Reports</p>
-                        <p className="text-[10px] text-slate-400">View your history</p>
+                        <p className="text-xs font-bold text-slate-900">My Reports</p>
+                        <p className="text-[10px] text-slate-500 font-medium">View submission history</p>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-white">Recent Reports</h4>
-                      <button onClick={() => setUserTab('reports')} className="text-[11px] text-emerald-400 font-semibold hover:underline">
+                      <h4 className="text-xs font-bold text-slate-900">Recent Reports</h4>
+                      <button onClick={() => setUserTab('reports')} className="text-[11px] text-[#145547] font-bold hover:underline">
                         See All &gt;
                       </button>
                     </div>
@@ -838,19 +838,19 @@ export default function UserMobileApp({
                         { title: 'Crack', loc: 'Sector 22, Chandigarh', time: '20 min ago', status: 'Submitted', img: '/images/roads/road_longitudinal_d20.jpg' },
                         { title: 'Patch Damage', loc: 'Sector 34, Chandigarh', time: '1 hour ago', status: 'Submitted', img: '/images/roads/road_alligator_d10.jpg' }
                       ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
                           <div className="flex items-center space-x-2.5">
-                            <img src={item.img} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                            <img src={item.img} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs" />
                             <div>
-                              <p className="text-xs font-bold text-white">{item.title}</p>
-                              <p className="text-[10px] text-slate-400">{item.loc}</p>
-                              <span className="text-[9px] text-emerald-400 font-semibold flex items-center space-x-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                              <p className="text-xs font-bold text-slate-900">{item.title}</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{item.loc}</p>
+                              <span className="text-[9px] text-[#145547] font-bold flex items-center space-x-1 mt-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                                 <span>{item.status}</span>
                               </span>
                             </div>
                           </div>
-                          <span className="text-[10px] text-slate-500">{item.time}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">{item.time}</span>
                         </div>
                       ))}
                     </div>
@@ -862,21 +862,21 @@ export default function UserMobileApp({
               {userTab === 'record' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-500 hover:text-slate-800 transition-colors">
                       <ArrowLeft className="h-5 w-5" />
                     </button>
-                    <span className="text-xs font-bold text-white">Record</span>
+                    <span className="text-xs font-bold text-slate-900">Record Road Defect</span>
                     <button
                       onClick={toggleTorch}
                       title={torchOn ? "Turn Torch Off" : "Turn Torch On"}
-                      className={`p-1.5 rounded-lg transition-colors ${torchOn ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${torchOn ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'text-slate-500 hover:text-slate-800'}`}
                     >
-                      <Zap className={`h-4 w-4 ${torchOn ? 'fill-amber-400' : ''}`} />
+                      <Zap className={`h-4 w-4 ${torchOn ? 'fill-amber-500' : ''}`} />
                     </button>
                   </div>
 
                   {/* VIEW FINDER / PHOTO PREVIEW CONTAINER */}
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-black h-72 flex items-center justify-center shadow-2xl">
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 h-72 flex items-center justify-center shadow-md">
                     {photoFlash && (
                       <div className="absolute inset-0 bg-white/90 z-30 transition-opacity duration-300 pointer-events-none animate-ping" />
                     )}
@@ -889,8 +889,8 @@ export default function UserMobileApp({
                           alt="Captured Road Hazard"
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-emerald-500/95 text-slate-950 text-[10px] font-black flex items-center space-x-1 shadow-lg backdrop-blur z-20">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 text-[#145547] text-[10px] font-bold flex items-center space-x-1 shadow-md border border-emerald-200 backdrop-blur z-20">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
                           <span>Photo Captured • Ready to Review</span>
                         </div>
                       </>
@@ -911,29 +911,29 @@ export default function UserMobileApp({
                           className="w-full h-full object-cover"
                         />
                         {/* Live HUD Overlays */}
-                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 border border-emerald-500/40 text-emerald-400 text-[10px] font-bold flex items-center space-x-1.5 backdrop-blur z-20">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 border border-emerald-200 text-[#145547] text-[10px] font-bold flex items-center space-x-1.5 shadow-md backdrop-blur z-20">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                           <span>LIVE REAR CAMERA</span>
                         </div>
 
                         {/* Framing Reticle */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                          <div className="w-48 h-36 border border-white/20 rounded-2xl flex items-center justify-center relative">
+                          <div className="w-48 h-36 border border-white/40 rounded-2xl flex items-center justify-center relative">
                             <div className="w-3 h-3 border-t-2 border-l-2 border-emerald-400 absolute -top-0.5 -left-0.5" />
                             <div className="w-3 h-3 border-t-2 border-r-2 border-emerald-400 absolute -top-0.5 -right-0.5" />
                             <div className="w-3 h-3 border-b-2 border-l-2 border-emerald-400 absolute -bottom-0.5 -left-0.5" />
                             <div className="w-3 h-3 border-b-2 border-r-2 border-emerald-400 absolute -bottom-0.5 -right-0.5" />
-                            <span className="text-[10px] text-white/50 font-medium">Align Road Defect</span>
+                            <span className="text-[10px] text-white/80 font-medium">Align Road Defect</span>
                           </div>
                         </div>
 
-                        <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/60 border border-slate-700 text-[10px] font-bold text-white z-20">
+                        <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-[10px] font-bold text-white z-20">
                           1x
                         </div>
                       </>
                     ) : isCameraStarting ? (
                       /* 3. Initializing Loader */
-                      <div className="flex flex-col items-center justify-center space-y-2 text-slate-400 p-4">
+                      <div className="flex flex-col items-center justify-center space-y-2 text-slate-300 p-4">
                         <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
                         <span className="text-xs font-semibold">Starting Rear Camera...</span>
                       </div>
@@ -941,17 +941,17 @@ export default function UserMobileApp({
                       /* 4. Camera Error / Fallback State */
                       <div className="p-4 text-center space-y-2 max-w-xs">
                         <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
-                        <p className="text-xs text-slate-300 font-semibold">{cameraError}</p>
+                        <p className="text-xs text-slate-200 font-semibold">{cameraError}</p>
                         <div className="flex items-center justify-center space-x-2 pt-1">
                           <button
                             onClick={startRearCamera}
-                            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                            className="px-3.5 py-1.5 rounded-xl bg-[#145547] hover:bg-[#0d4339] text-white font-bold text-xs shadow-md transition-all active:scale-95"
                           >
                             Retry Camera
                           </button>
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs shadow-md transition-all active:scale-95 border border-slate-700"
+                            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs shadow-md transition-all active:scale-95 border border-slate-200"
                           >
                             Choose Photo
                           </button>
@@ -967,9 +967,9 @@ export default function UserMobileApp({
                         />
                         <button
                           onClick={startRearCamera}
-                          className="absolute px-4 py-2 rounded-xl bg-slate-900/90 border border-emerald-500/50 text-white font-bold text-xs flex items-center space-x-2 shadow-xl hover:border-emerald-400 transition-all active:scale-95"
+                          className="absolute px-4 py-2 rounded-xl bg-white/95 border border-emerald-200 text-[#145547] font-bold text-xs flex items-center space-x-2 shadow-lg hover:border-[#145547] transition-all active:scale-95"
                         >
-                          <Camera className="w-4 h-4 text-emerald-400" />
+                          <Camera className="w-4 h-4 text-[#145547]" />
                           <span>Start Live Rear Camera</span>
                         </button>
                       </div>
@@ -997,39 +997,39 @@ export default function UserMobileApp({
                         <button
                           onClick={handleRetake}
                           disabled={isUploading}
-                          className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow"
+                          className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow-xs"
                         >
-                          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
                           <span>🔄 Retake</span>
                         </button>
                         <button
                           onClick={handleCancel}
                           disabled={isUploading}
-                          className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 text-rose-300 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow"
+                          className="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all flex items-center justify-center space-x-1.5 active:scale-95 disabled:opacity-50 shadow-xs"
                         >
-                          <X className="w-3.5 h-3.5 text-rose-400" />
+                          <X className="w-3.5 h-3.5 text-rose-600" />
                           <span>❌ Cancel</span>
                         </button>
                       </div>
 
                       {/* Upload Success Card OR Upload Action Card */}
                       {uploadSuccessData ? (
-                        <div className="bg-slate-900/95 border border-emerald-500/40 rounded-2xl p-4 text-center space-y-3 shadow-2xl backdrop-blur">
-                          <div className="inline-flex items-center space-x-1.5 text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <div className="bg-white border border-emerald-200 rounded-2xl p-4 text-center space-y-3 shadow-md">
+                          <div className="inline-flex items-center space-x-1.5 text-[#145547] font-bold text-xs bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-4 h-4 text-[#145547]" />
                             <span>Road Hazard Uploaded & Logged!</span>
                           </div>
 
-                        <p className="text-xs text-slate-300 font-semibold">
-                            {uploadSuccessData.duplicate ? 'Existing report:' : 'Report accepted:'} <span className="font-mono text-emerald-300">{uploadSuccessData.report_id || uploadSuccessData.observation_id}</span>
+                          <p className="text-xs text-slate-700 font-semibold">
+                            {uploadSuccessData.duplicate ? 'Existing report:' : 'Report accepted:'} <span className="font-mono text-[#145547] font-bold">{uploadSuccessData.report_id || uploadSuccessData.observation_id}</span>
                           </p>
 
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[11px] text-slate-500">
                             📍 {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
                           </p>
 
                           {uploadSuccessData.preview_url && (
-                            <div className="w-28 h-20 mx-auto rounded-xl overflow-hidden border border-slate-700 shadow-md">
+                            <div className="w-28 h-20 mx-auto rounded-xl overflow-hidden border border-slate-200 shadow-xs">
                               <img src={uploadSuccessData.preview_url} alt="Uploaded" className="w-full h-full object-cover" />
                             </div>
                           )}
@@ -1037,14 +1037,14 @@ export default function UserMobileApp({
                           <div className="flex items-center space-x-2 pt-1">
                             <button
                               onClick={() => setUserTab('map')}
-                              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-500/25 active:scale-95"
+                              className="flex-1 py-2.5 rounded-xl bg-[#145547] hover:bg-[#0d4339] text-white text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95"
                             >
                               <Eye className="w-4 h-4" />
                               <span>View Pin on Map 🗺️</span>
                             </button>
                             <button
                               onClick={handleRetake}
-                              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all flex items-center justify-center space-x-1 shadow"
+                              className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center space-x-1 shadow-xs"
                             >
                               <Camera className="w-3.5 h-3.5" />
                               <span>Snap New</span>
@@ -1052,63 +1052,63 @@ export default function UserMobileApp({
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-slate-900/95 border border-emerald-500/30 rounded-2xl p-3.5 space-y-3 shadow-2xl backdrop-blur">
-                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800">
-                            <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
+                        <div className="bg-white border border-emerald-200 rounded-2xl p-3.5 space-y-3 shadow-md">
+                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+                            <div className="flex items-center space-x-1.5 text-[#145547] font-bold">
                               <CheckCircle2 className="w-4 h-4" />
                               <span>Photo Ready to Upload</span>
                             </div>
-                            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/20">
+                            <span className="text-[10px] bg-emerald-50 text-[#145547] px-2 py-0.5 rounded-full font-bold border border-emerald-200">
                               GPS Tagged
                             </span>
                           </div>
 
                           {/* Preserved Telemetry: Locked GPS & Capture Timestamp */}
-                          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
                             <div className="flex items-center space-x-1.5 truncate">
-                              <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                              <span className="truncate">
+                              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <span className="truncate font-medium">
                                 {(lockedCoords?.lat ?? userCoords.lat).toFixed(4)}°N, {(lockedCoords?.lng ?? userCoords.lng).toFixed(4)}°E
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1.5 justify-end text-slate-400">
+                            <div className="flex items-center space-x-1.5 justify-end text-slate-500">
                               <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>{new Date(captureTimestamp || Date.now()).toLocaleTimeString()}</span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                            <span>Sector: <strong className="text-white">{lockedCoords?.city || userCoords.city || 'Chandigarh'}</strong></span>
-                            <span className="text-emerald-400 font-mono">±{lockedCoords?.accuracy || userCoords.accuracy}m Accuracy</span>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                            <span>Sector: <strong className="text-slate-800">{lockedCoords?.city || userCoords.city || 'Chandigarh'}</strong></span>
+                            <span className="text-[#145547] font-mono font-bold">±{lockedCoords?.accuracy || userCoords.accuracy}m Accuracy</span>
                           </div>
 
                           {uploadError && (
-                            <p className="text-[11px] text-rose-400 text-center font-medium bg-rose-500/10 p-2 rounded-xl border border-rose-500/20">
+                            <p className="text-[11px] text-rose-700 text-center font-medium bg-rose-50 p-2 rounded-xl border border-rose-200">
                               {uploadError}
                             </p>
                           )}
 
                           {isUploading && (
                             <div className="space-y-1" aria-live="polite">
-                              <div className="flex justify-between text-[10px] text-slate-400"><span>Uploading photo & running road-damage detection</span><span>{uploadProgress}%</span></div>
-                              <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400 transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                              <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>Uploading photo & running road-damage detection</span><span>{uploadProgress}%</span></div>
+                              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-[#145547] transition-all" style={{ width: `${uploadProgress}%` }} /></div>
                             </div>
                           )}
 
-                          {/* EXPLICIT UPLOAD BUTTON - ONLY UPLOADS WHEN USER CLICKS THIS */}
+                          {/* EXPLICIT UPLOAD BUTTON */}
                           <button
                             onClick={handleQuickUpload}
                             disabled={isUploading}
-                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50 mt-1"
+                            className="w-full py-3 px-4 rounded-xl bg-[#145547] hover:bg-[#0d4339] text-white font-bold text-xs transition-all shadow-md shadow-emerald-950/15 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50 mt-1"
                           >
                             {isUploading ? (
                               <>
-                                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                                <Loader2 className="w-4 h-4 animate-spin text-white" />
                                 <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Validating road photo & detecting damage...'}</span>
                               </>
                             ) : (
                               <>
-                                <UploadCloud className="w-4 h-4 text-slate-950" />
+                                <UploadCloud className="w-4 h-4 text-white" />
                                 <span>Upload & Log Hazard to JanDrishti</span>
                               </>
                             )}
@@ -1122,26 +1122,26 @@ export default function UserMobileApp({
                        ════════════════════════════════════════════════════════════ */
                     <div className="space-y-3">
                       {/* Live GPS Telemetry Status Bar */}
-                      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px]">
-                        <div className="flex items-center space-x-1.5 text-slate-300">
-                          <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
-                          <span className="font-semibold text-white">
+                      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-white border border-slate-200/90 shadow-xs text-[10px]">
+                        <div className="flex items-center space-x-1.5 text-slate-600">
+                          <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
+                          <span className="font-semibold text-slate-800">
                             {userCoords.isReal
                               ? `${userCoords.lat?.toFixed(4)}°, ${userCoords.lng?.toFixed(4)}° (${userCoords.city})`
                               : '30.7450° N, 76.7760° E (Sector 17)'}
                           </span>
                         </div>
-                        <span className="text-emerald-400 font-mono">
+                        <span className="text-[#145547] font-mono font-bold">
                           {userCoords.isReal ? `±${userCoords.accuracy}m GPS Fix` : 'Demo Sector'}
                         </span>
                       </div>
 
                       {/* Photo / Video Mode Selector */}
-                      <div className="flex items-center justify-center space-x-2 bg-slate-900 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-800">
+                      <div className="flex items-center justify-center space-x-2 bg-slate-100 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-200">
                         <button
                           onClick={() => setRecordMode('photo')}
                           className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
-                            recordMode === 'photo' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                            recordMode === 'photo' ? 'bg-[#145547] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
                           Photo
@@ -1149,7 +1149,7 @@ export default function UserMobileApp({
                         <button
                           onClick={() => setRecordMode('video')}
                           className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
-                            recordMode === 'video' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                            recordMode === 'video' ? 'bg-[#145547] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
                           Video
@@ -1160,9 +1160,9 @@ export default function UserMobileApp({
                       <div className="flex items-center justify-center">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="px-3.5 py-1.5 rounded-xl bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 text-blue-300 text-xs font-semibold flex items-center space-x-1.5 shadow transition-all active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-[#145547] text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-all active:scale-95"
                         >
-                          <Camera className="w-3.5 h-3.5 text-blue-400" />
+                          <Camera className="w-3.5 h-3.5 text-[#145547]" />
                           <span>📸 Snap / Choose Photo from Phone</span>
                         </button>
                       </div>
@@ -1172,9 +1172,9 @@ export default function UserMobileApp({
                         <button
                           onClick={toggleRecording}
                           title={recordMode === 'video' ? (isRecording ? "Stop Recording" : "Start Recording") : "Capture Photo"}
-                          className={`w-16 h-16 rounded-full border-4 ${isRecording ? 'border-rose-500/50' : 'border-slate-700'} p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl`}
+                          className={`w-16 h-16 rounded-full border-4 ${isRecording ? 'border-rose-300' : 'border-slate-300'} p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md`}
                         >
-                          <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600 animate-pulse' : 'bg-red-500'} flex items-center justify-center shadow-lg`}>
+                          <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600 animate-pulse' : 'bg-[#145547]'} flex items-center justify-center shadow-xs`}>
                             {recordMode === 'video' ? (
                               isRecording ? <Square className="h-5 w-5 text-white" /> : <div className="w-6 h-6 rounded-full bg-white" />
                             ) : (
@@ -1188,19 +1188,19 @@ export default function UserMobileApp({
                       <div className="text-center text-xs">
                         {recordMode === 'video' ? (
                           isRecording ? (
-                            <span className="text-rose-400 font-bold flex items-center justify-center space-x-1.5 animate-pulse">
+                            <span className="text-rose-600 font-bold flex items-center justify-center space-x-1.5 animate-pulse">
                               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                               <span>Recording... {formatTime(recordingSeconds)} / 00:30</span>
                             </span>
                           ) : (
-                            <span className="text-slate-400 font-medium flex items-center justify-center space-x-1.5">
-                              <span className="w-2 h-2 rounded-full bg-slate-500" />
+                            <span className="text-slate-500 font-medium flex items-center justify-center space-x-1.5">
+                              <span className="w-2 h-2 rounded-full bg-slate-400" />
                               <span>Ready to Record • Tap button to start</span>
                             </span>
                           )
                         ) : (
-                          <span className="text-slate-300 font-medium flex items-center justify-center space-x-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span className="text-slate-600 font-medium flex items-center justify-center space-x-1.5">
+                            <span className="w-2 h-2 rounded-full bg-[#145547]" />
                             <span>Photo Mode • Tap shutter button to snap road hazard</span>
                           </span>
                         )}
@@ -1214,11 +1214,11 @@ export default function UserMobileApp({
               {userTab === 'map' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-500 hover:text-slate-800 transition-colors">
                       <ArrowLeft className="h-5 w-5" />
                     </button>
-                    <span className="text-xs font-bold text-white">Live Map</span>
-                    <button onClick={onOpenUpload} className="p-1 text-emerald-400 hover:text-white">
+                    <span className="text-xs font-bold text-slate-900">Live Map</span>
+                    <button onClick={onOpenUpload} className="p-1 text-[#145547] hover:text-[#0d4339] transition-colors">
                       <Camera className="h-4 w-4" />
                     </button>
                   </div>
@@ -1228,24 +1228,24 @@ export default function UserMobileApp({
                     <input
                       type="text"
                       placeholder="Search location..."
-                      className="w-full bg-slate-900 border border-slate-800 text-xs rounded-xl pl-9 pr-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none"
+                      className="w-full bg-white border border-slate-200 text-xs rounded-xl pl-9 pr-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#145547] focus:ring-1 focus:ring-[#145547] shadow-xs"
                     />
                   </div>
 
                   {/* Map Header Info */}
-                  <div className="flex items-center justify-between text-xs bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2">
+                  <div className="flex items-center justify-between text-xs bg-white border border-slate-200/90 rounded-xl px-3 py-2 shadow-xs">
                     <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-                      <span className="font-semibold text-slate-200">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="font-semibold text-slate-800">
                         {userCoords.isReal ? `Live: ${userCoords.city}` : 'Smart City Map'}
                       </span>
                     </div>
-                    <span className="text-[11px] text-blue-400 font-mono">
+                    <span className="text-[11px] text-[#145547] font-mono font-bold">
                       {userCoords.isReal ? `${userCoords.lat?.toFixed(4)}, ${userCoords.lng?.toFixed(4)}` : 'Chandigarh'}
                     </span>
                   </div>
 
-                  <div className="h-72 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 relative shadow-xl">
+                  <div className="h-72 sm:h-80 rounded-2xl overflow-hidden border border-slate-200/90 relative shadow-sm">
                     <RoadMap
                       geojson={roadsGeoJson}
                       observations={observations}
@@ -1254,33 +1254,33 @@ export default function UserMobileApp({
                     />
                   </div>
 
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-white">Reported Issues</span>
-                      <span className="text-[10px] text-emerald-400 font-semibold cursor-pointer">View All</span>
+                      <span className="text-xs font-bold text-slate-900">Reported Issues</span>
+                      <span className="text-[10px] text-[#145547] font-bold cursor-pointer hover:underline">View All</span>
                     </div>
 
                     <div className="space-y-2 text-xs">
-                      <div className="flex justify-between items-center text-slate-300">
+                      <div className="flex justify-between items-center text-slate-600">
                         <span className="flex items-center space-x-2">
                           <Flame className="h-3.5 w-3.5 text-rose-500" />
                           <span>Pothole</span>
                         </span>
-                        <b className="text-white">48</b>
+                        <b className="text-slate-900">48</b>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
+                      <div className="flex justify-between items-center text-slate-600">
                         <span className="flex items-center space-x-2">
                           <Activity className="h-3.5 w-3.5 text-amber-500" />
                           <span>Crack</span>
                         </span>
-                        <b className="text-white">32</b>
+                        <b className="text-slate-900">32</b>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
+                      <div className="flex justify-between items-center text-slate-600">
                         <span className="flex items-center space-x-2">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#145547]" />
                           <span>Patch Damage</span>
                         </span>
-                        <b className="text-white">18</b>
+                        <b className="text-slate-900">18</b>
                       </div>
                     </div>
                   </div>
@@ -1291,10 +1291,10 @@ export default function UserMobileApp({
               {userTab === 'reports' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                    <button onClick={() => setUserTab('home')} className="p-1 rounded-lg text-slate-500 hover:text-slate-800 transition-colors">
                       <ArrowLeft className="h-5 w-5" />
                     </button>
-                    <span className="text-xs font-bold text-white">My Hazard Reports</span>
+                    <span className="text-xs font-bold text-slate-900">My Hazard Reports</span>
                     <span />
                   </div>
 
@@ -1302,18 +1302,18 @@ export default function UserMobileApp({
                     {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).map(r => {
                       const damage = r.detections?.[0] || {};
                       return (
-                      <div key={r.report_id || r.observation_id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                      <div key={r.report_id || r.observation_id} className="p-3 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between shadow-xs hover:border-slate-300 transition-colors">
                         <div>
-                          <p className="text-xs font-bold text-white">{damage.class_name || 'Road hazard'}</p>
-                          <p className="text-[10px] text-slate-400">{r.sector || 'Field location'} • ID: {r.report_id || r.observation_id}</p>
-                          <span className="text-[10px] font-semibold text-emerald-400 mt-1 block">{r.report_status === 'accepted' ? 'Accepted for review' : 'Under Review'}</span>
+                          <p className="text-xs font-bold text-slate-900">{damage.class_name || 'Road hazard'}</p>
+                          <p className="text-[10px] text-slate-500">{r.sector || 'Field location'} • ID: {r.report_id || r.observation_id}</p>
+                          <span className="text-[10px] font-semibold text-[#145547] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1 inline-block">{r.report_status === 'accepted' ? 'Accepted for review' : 'Under Review'}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs font-bold text-amber-400">{(damage.severity || 'medium').toUpperCase()}</p>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">{(damage.severity || 'medium').toUpperCase()}</span>
                         </div>
                       </div>
                     )})}
-                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).length === 0 && <p className="p-5 text-center text-xs text-slate-500">No submitted reports yet. Capture a road photo to start one.</p>}
+                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).length === 0 && <p className="p-5 text-center text-xs text-slate-400">No submitted reports yet. Capture a road photo to start one.</p>}
                   </div>
                 </div>
               )}
@@ -1321,19 +1321,19 @@ export default function UserMobileApp({
               {/* TAB 5: PROFILE */}
               {userTab === 'profile' && (
                 <div className="space-y-4 text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 mx-auto flex items-center justify-center text-xl font-bold text-emerald-300">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-200 mx-auto flex items-center justify-center text-xl font-bold text-[#145547] shadow-xs">
                     {currentUser.avatar}
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">{currentUser.name}</h3>
-                    <p className="text-xs text-slate-400">{currentUser.email}</p>
-                    <p className="text-xs text-slate-400">{currentUser.phone}</p>
+                    <h3 className="text-base font-bold text-slate-900">{currentUser.name}</h3>
+                    <p className="text-xs text-slate-500">{currentUser.email}</p>
+                    <p className="text-xs text-slate-500">{currentUser.phone}</p>
                   </div>
 
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-left text-xs space-y-2">
-                    <p className="text-slate-400">Total Hazards Reported: <b className="text-white">14</b></p>
-                    <p className="text-slate-400">Verified Cleared: <b className="text-emerald-400">9</b></p>
-                    <p className="text-slate-400">Contribution Rank: <b className="text-amber-400">Top 5% Citizen</b></p>
+                  <div className="p-3.5 bg-slate-50/80 border border-slate-200/90 rounded-xl text-left text-xs space-y-2">
+                    <p className="text-slate-600">Total Hazards Reported: <b className="text-slate-900 font-bold">14</b></p>
+                    <p className="text-slate-600">Verified Cleared: <b className="text-[#145547] font-bold">9</b></p>
+                    <p className="text-slate-600">Contribution Rank: <b className="text-amber-700 font-bold">Top 5% Citizen</b></p>
                   </div>
 
                   <button
@@ -1341,7 +1341,7 @@ export default function UserMobileApp({
                       if (onLogout) onLogout();
                       else setAuthScreen('login');
                     }}
-                    className="w-full py-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-colors"
+                    className="w-full py-2.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors shadow-xs"
                   >
                     Logout / Switch Account
                   </button>
@@ -1350,10 +1350,10 @@ export default function UserMobileApp({
             </div>
 
             {/* Bottom Nav */}
-            <div className="bg-[#0c1427] border-t border-slate-800/80 px-4 py-2 flex items-center justify-between text-[10px] text-slate-400 relative">
+            <div className="bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-4 py-2 flex items-center justify-between text-[10px] text-slate-500 relative shadow-sm">
               <button
                 onClick={() => setUserTab('home')}
-                className={`flex flex-col items-center space-y-0.5 ${userTab === 'home' ? 'text-emerald-400 font-bold' : 'hover:text-white'}`}
+                className={`flex flex-col items-center space-y-0.5 transition-colors ${userTab === 'home' ? 'text-[#145547] font-bold' : 'hover:text-slate-900'}`}
               >
                 <div className="h-4 w-4 flex items-center justify-center">🏠</div>
                 <span>Home</span>
@@ -1361,7 +1361,7 @@ export default function UserMobileApp({
 
               <button
                 onClick={() => setUserTab('map')}
-                className={`flex flex-col items-center space-y-0.5 ${userTab === 'map' ? 'text-emerald-400 font-bold' : 'hover:text-white'}`}
+                className={`flex flex-col items-center space-y-0.5 transition-colors ${userTab === 'map' ? 'text-[#145547] font-bold' : 'hover:text-slate-900'}`}
               >
                 <MapPin className="h-4 w-4" />
                 <span>Map</span>
@@ -1370,7 +1370,7 @@ export default function UserMobileApp({
               <div className="relative -top-4">
                 <button
                   onClick={() => setUserTab('record')}
-                  className="w-12 h-12 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 border-4 border-[#0c1427] active:scale-95 transition-transform"
+                  className="w-12 h-12 rounded-full bg-[#145547] hover:bg-[#0d4339] text-white flex items-center justify-center shadow-lg shadow-emerald-950/20 border-4 border-white active:scale-95 transition-transform"
                 >
                   <Camera className="h-5 w-5" />
                 </button>
@@ -1378,7 +1378,7 @@ export default function UserMobileApp({
 
               <button
                 onClick={() => setUserTab('reports')}
-                className={`flex flex-col items-center space-y-0.5 ${userTab === 'reports' ? 'text-emerald-400 font-bold' : 'hover:text-white'}`}
+                className={`flex flex-col items-center space-y-0.5 transition-colors ${userTab === 'reports' ? 'text-[#145547] font-bold' : 'hover:text-slate-900'}`}
               >
                 <FileText className="h-4 w-4" />
                 <span>Reports</span>
@@ -1386,7 +1386,7 @@ export default function UserMobileApp({
 
               <button
                 onClick={() => setUserTab('profile')}
-                className={`flex flex-col items-center space-y-0.5 ${userTab === 'profile' ? 'text-emerald-400 font-bold' : 'hover:text-white'}`}
+                className={`flex flex-col items-center space-y-0.5 transition-colors ${userTab === 'profile' ? 'text-[#145547] font-bold' : 'hover:text-slate-900'}`}
               >
                 <User className="h-4 w-4" />
                 <span>Profile</span>

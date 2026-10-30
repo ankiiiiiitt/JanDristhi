@@ -208,36 +208,39 @@ export default function UnifiedAppView({
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#070b14] text-slate-100 font-sans select-none overflow-x-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#f7faf9] text-slate-900 font-sans select-none overflow-x-hidden">
       {/* ─────────────────────────────────────────────────────────────
           1. MOBILE TOP APP BAR & DRAWER (Visible on Mobile / Tablets)
          ───────────────────────────────────────────────────────────── */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0c1427] border-b border-slate-800 sticky top-0 z-50">
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-50">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"
           >
             {isMobileDrawerOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
-          <div className="flex items-center space-x-1">
-            <span className="text-lg font-black text-white">Jan</span>
-            <span className="text-lg font-black text-emerald-400">Drishti</span>
+          <div className="flex items-center space-x-1.5">
+            <span className="grid place-items-center size-6 rounded-md bg-[#0d4d41] text-emerald-200">
+              <Sparkles size={12} />
+            </span>
+            <span className="text-lg font-black text-slate-950">Jan</span>
+            <span className="text-lg font-black text-[#145547]">Drishti</span>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveNav('live')}
-            className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[11px] font-bold flex items-center space-x-1"
+            className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold flex items-center space-x-1"
           >
-            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            <Radio className="h-3.5 w-3.5 animate-pulse text-rose-600" />
             <span>Live Telemetry</span>
           </button>
 
           <button
             onClick={onOpenUpload}
-            className="p-2 rounded-lg bg-emerald-500 text-slate-950 shadow"
+            className="p-2 rounded-xl bg-[#145547] text-white shadow-sm hover:bg-[#0d4339]"
           >
             <Camera className="h-4 w-4" />
           </button>
@@ -247,7 +250,7 @@ export default function UnifiedAppView({
       {/* Mobile Drawer Navigation Backdrop */}
       {isMobileDrawerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileDrawerOpen(false)}
         />
       )}
@@ -256,21 +259,23 @@ export default function UnifiedAppView({
           2. SIDEBAR NAVIGATION (Desktop persistent, Mobile Slide-over)
          ───────────────────────────────────────────────────────────── */}
       <aside
-        className={`fixed md:sticky top-0 left-0 h-screen w-60 bg-[#0c1427] border-r border-slate-800/80 flex flex-col justify-between z-50 transition-transform duration-200 ease-in-out ${
+        className={`fixed md:sticky top-0 left-0 h-screen w-60 bg-white/95 backdrop-blur-md border-r border-slate-200/90 flex flex-col justify-between z-50 transition-transform duration-200 ease-in-out shadow-xs ${
           isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         <div>
           {/* Logo */}
-          <div className="p-4 border-b border-slate-800/60">
-            <div className="flex items-center space-x-1.5">
-              <span className="text-xl font-bold tracking-tight text-white">Jan</span>
-              <div className="relative flex items-center justify-center">
-                <span className="text-xl font-black text-emerald-400">Drishti</span>
-                <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="p-4 border-b border-slate-200/80">
+            <div className="flex items-center space-x-2">
+              <span className="grid place-items-center size-8 rounded-xl bg-[#0d4d41] text-emerald-200 shadow-xs">
+                <Sparkles size={16} />
+              </span>
+              <div className="flex items-center space-x-1">
+                <span className="text-xl font-extrabold tracking-tight text-slate-950">Jan</span>
+                <span className="text-xl font-extrabold text-[#145547]">Drishti</span>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 tracking-wider mt-0.5">Safer Roads • Smarter Cities</p>
+            <p className="text-[10px] text-slate-500 font-semibold tracking-wider mt-1">Smart City GIS & AI Studio</p>
           </div>
 
           {/* Links */}
@@ -285,18 +290,18 @@ export default function UnifiedAppView({
                     setActiveNav(item.id);
                     setIsMobileDrawerOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
+                      ? 'bg-[#f0f7f4] text-[#145547] font-bold shadow-xs border-r-2 border-[#145547]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-[#145547]' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.id === 'live' && (
-                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                   )}
                 </button>
               );
@@ -305,15 +310,15 @@ export default function UnifiedAppView({
         </div>
 
         {/* Profile */}
-        <div className="p-3 border-t border-slate-800/70">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40">
+        <div className="p-3 border-t border-slate-200/80">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-full bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-xs font-bold text-indigo-200">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-xs font-bold text-[#145547]">
                 AD
               </div>
               <div className="text-left">
-                <p className="text-xs font-semibold text-slate-200">Admin</p>
-                <p className="text-[10px] text-slate-400">City Authority</p>
+                <p className="text-xs font-bold text-slate-900">Admin</p>
+                <p className="text-[10px] text-slate-500">City Authority</p>
               </div>
             </div>
             <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -324,15 +329,15 @@ export default function UnifiedAppView({
       {/* ─────────────────────────────────────────────────────────────
           3. MAIN CONTENT CONTAINER (Fully Responsive Grid)
          ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-[#091122] to-[#070b14]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#f7faf9]">
         {/* Desktop Header */}
-        <header className="hidden md:flex h-14 px-6 border-b border-slate-800/70 items-center justify-between flex-shrink-0 bg-[#0c1427]/60 backdrop-blur-md sticky top-0 z-10">
+        <header className="hidden md:flex h-14 px-6 border-b border-slate-200/80 items-center justify-between flex-shrink-0 bg-white/90 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-lg text-white">Jan</span>
-              <span className="font-extrabold text-lg text-emerald-400">Drishti</span>
+            <div className="flex items-center space-x-1.5">
+              <span className="font-extrabold text-lg text-slate-950">Jan</span>
+              <span className="font-extrabold text-lg text-[#145547]">Drishti</span>
             </div>
-            <span className="text-xs text-slate-400 border-l border-slate-700 pl-3">
+            <span className="text-xs text-slate-500 border-l border-slate-200 pl-3 font-medium">
               AI-Powered Predictive Urban Infrastructure Intelligence
             </span>
           </div>
@@ -341,50 +346,50 @@ export default function UnifiedAppView({
             {/* Live Monitoring Quick Toggle */}
             <button
               onClick={() => setActiveNav('live')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors ${
                 activeNav === 'live'
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
-                  : 'bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
               }`}
             >
-              <Radio className="h-3.5 w-3.5 animate-pulse" />
+              <Radio className="h-3.5 w-3.5 animate-pulse text-rose-600" />
               <span>Mobile Live Collector</span>
             </button>
 
             {/* Weather / Location Pill */}
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-xs text-slate-200">
-              <MapPin className="h-3.5 w-3.5 text-blue-400" />
-              <span>Chandigarh</span>
-              <span className="text-slate-600">|</span>
-              <CloudSun className="h-3.5 w-3.5 text-amber-400" />
+            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-white border border-slate-200/90 text-xs text-slate-700 shadow-xs">
+              <MapPin className="h-3.5 w-3.5 text-[#145547]" />
+              <span className="font-semibold">Chandigarh</span>
+              <span className="text-slate-300">|</span>
+              <CloudSun className="h-3.5 w-3.5 text-amber-500" />
               <span>28°C Clear Sky</span>
             </div>
 
             <button
               onClick={onOpenUpload}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center space-x-1.5 shadow-md shadow-emerald-500/20"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#145547] hover:bg-[#0d4339] text-white flex items-center space-x-1.5 shadow-md shadow-emerald-950/10 transition-all active:scale-98"
             >
               <Camera className="h-3.5 w-3.5" />
               <span>Report Hazard</span>
             </button>
 
             {/* Engineer Profile & Quick Logout */}
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
-              <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-purple-950/40 border border-purple-800/40 text-xs">
-                <span className="w-5 h-5 rounded-full bg-purple-600 font-bold text-[10px] flex items-center justify-center text-white">
+            <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+              <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                <span className="w-5 h-5 rounded-full bg-[#145547] font-bold text-[10px] flex items-center justify-center text-white">
                   {currentUser?.avatar || 'E'}
                 </span>
-                <span className="font-semibold text-purple-200 hidden md:inline">
+                <span className="font-bold text-[#145547] hidden md:inline">
                   {currentUser?.name || 'Er. Vikram Sharma'}
                 </span>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-semibold">
+                <span className="text-[9px] bg-emerald-200/60 text-[#0d4d41] px-1.5 py-0.5 rounded font-bold">
                   Engineer
                 </span>
               </div>
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 border border-slate-700/80 text-slate-300 transition-colors"
+                  className="p-1.5 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 text-slate-600 transition-colors shadow-xs"
                   title="Logout & Switch Role Portal"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -403,11 +408,11 @@ export default function UnifiedAppView({
             <div className="flex-1 flex flex-col space-y-4 min-w-0">
               {/* Header Title */}
               <div className="text-center py-1">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center justify-center space-x-2">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950 flex items-center justify-center space-x-2">
                   <span>Jan</span>
-                  <span className="text-emerald-400">Drishti</span>
+                  <span className="text-[#145547]">Drishti</span>
                 </h1>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 font-medium">
                   AI-Powered Predictive Urban Infrastructure Intelligence • From Road Data to Safer Cities
                 </p>
               </div>
@@ -415,73 +420,73 @@ export default function UnifiedAppView({
               {/* 5 KPI Metric Cards (Auto Wrapping for Mobile) */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
                 {/* 1. Total Detections */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 flex items-center justify-center text-white shadow-lg shadow-rose-500/20 flex-shrink-0">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 flex items-center space-x-3 shadow-xs hover:shadow-md transition-all">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-xs flex-shrink-0">
                     <Flame className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Total Detections</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block leading-tight">Total Detections</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-base sm:text-lg font-black text-white">{overview?.total_hazards_detected || '1,248'}</span>
-                      <span className="text-[10px] text-emerald-400 font-semibold">+12%</span>
+                      <span className="text-base sm:text-lg font-black text-slate-900">{overview?.total_hazards_detected || '1,248'}</span>
+                      <span className="text-[10px] text-[#145547] font-bold">+12%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Potholes */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 flex-shrink-0">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 flex items-center space-x-3 shadow-xs hover:shadow-md transition-all">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-xs flex-shrink-0">
                     <Activity className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Potholes</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block leading-tight">Potholes</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-base sm:text-lg font-black text-white">482</span>
-                      <span className="text-[10px] text-emerald-400 font-semibold">+18%</span>
+                      <span className="text-base sm:text-lg font-black text-slate-900">482</span>
+                      <span className="text-[10px] text-[#145547] font-bold">+18%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 3. Cracks */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 flex-shrink-0">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 flex items-center space-x-3 shadow-xs hover:shadow-md transition-all">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-xs flex-shrink-0">
                     <XCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Cracks</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block leading-tight">Cracks</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-base sm:text-lg font-black text-white">436</span>
-                      <span className="text-[10px] text-emerald-400 font-semibold">+9%</span>
+                      <span className="text-base sm:text-lg font-black text-slate-900">436</span>
+                      <span className="text-[10px] text-[#145547] font-bold">+9%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 4. Waterlogging Risk */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 flex-shrink-0">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 flex items-center space-x-3 shadow-xs hover:shadow-md transition-all">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 text-[#145547] border border-emerald-100 flex items-center justify-center shadow-xs flex-shrink-0">
                     <Droplets className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Waterlogging</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block leading-tight">Waterlogging</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-base sm:text-lg font-black text-white">192</span>
-                      <span className="text-[10px] text-emerald-400 font-semibold">+5%</span>
+                      <span className="text-base sm:text-lg font-black text-slate-900">192</span>
+                      <span className="text-[10px] text-[#145547] font-bold">+5%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 5. Road Health Score */}
-                <div className="col-span-2 sm:col-span-1 bg-[#0f172a]/90 border border-emerald-500/30 rounded-2xl p-3 flex items-center space-x-3 shadow-md bg-emerald-500/5">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 flex-shrink-0">
+                <div className="col-span-2 sm:col-span-1 bg-white border border-emerald-200/90 rounded-2xl p-3 sm:p-3.5 flex items-center space-x-3 shadow-xs hover:shadow-md transition-all bg-[#f0f7f4]">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#145547] text-white flex items-center justify-center shadow-sm flex-shrink-0">
                     <Gauge className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 block leading-tight">Health Score</span>
+                    <span className="text-[10px] uppercase font-bold text-[#145547] block leading-tight">Health Score</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-base sm:text-lg font-black text-white">
+                      <span className="text-base sm:text-lg font-black text-slate-900">
                         {overview?.city_average_health_score ? `${overview.city_average_health_score}/100` : '72/100'}
                       </span>
-                      <span className="text-[10px] text-emerald-400 font-semibold">+6%</span>
+                      <span className="text-[10px] text-[#145547] font-bold">+6%</span>
                     </div>
                   </div>
                 </div>
@@ -490,16 +495,16 @@ export default function UnifiedAppView({
               {/* Lower Split: City Road Map + High Risk Locations Panel */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
                 {/* Map Container */}
-                <div className="lg:col-span-8 bg-[#0f172a] border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col shadow-xl">
+                <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 flex flex-col shadow-xs">
                   {/* Map Header Toolbar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-white">City Road Map</span>
-                      <span className="text-[11px] text-slate-400 font-mono">(Chandigarh)</span>
+                      <span className="text-sm font-bold text-slate-900">City Road Map</span>
+                      <span className="text-[11px] text-slate-500 font-mono">(Chandigarh)</span>
                     </div>
 
                     {/* Filter Pills */}
-                    <div className="flex items-center space-x-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-[11px] overflow-x-auto">
+                    <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px] overflow-x-auto">
                       {['All Issues', 'Potholes', 'Cracks', 'Waterlogging'].map((f) => {
                         const key = f.toLowerCase().replace(' ', '');
                         const isSel = filterType === (key === 'allissues' ? 'all' : key);
@@ -507,8 +512,8 @@ export default function UnifiedAppView({
                           <button
                             key={f}
                             onClick={() => setFilterType(key === 'allissues' ? 'all' : key)}
-                            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all ${
-                              isSel ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                            className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-all ${
+                              isSel ? 'bg-[#145547] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
                             {f}
@@ -526,12 +531,12 @@ export default function UnifiedAppView({
                       placeholder="Search location, sector or road..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-slate-900/90 border border-slate-800 text-xs rounded-xl pl-9 pr-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-9 pr-3 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#145547] transition"
                     />
                   </div>
 
                   {/* Leaflet Map Canvas */}
-                  <div className="h-[320px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-800 relative">
+                  <div className="h-[320px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-200 shadow-xs relative">
                     <RoadMap
                       geojson={roadsGeoJson}
                       observations={observations}
@@ -542,13 +547,13 @@ export default function UnifiedAppView({
                 </div>
 
                 {/* High Risk Locations Column */}
-                <div className="lg:col-span-4 bg-[#0f172a] border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xl">
+                <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xs">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-bold text-white">High Risk Locations</span>
+                      <span className="text-sm font-bold text-slate-900">High Risk Locations</span>
                       <button
                         onClick={() => setActiveNav('analysis')}
-                        className="text-xs text-blue-400 hover:underline font-medium"
+                        className="text-xs text-[#145547] hover:underline font-bold"
                       >
                         View All
                       </button>
@@ -559,42 +564,42 @@ export default function UnifiedAppView({
                         <div
                           key={loc.id}
                           onClick={() => setSelectedLocation({ name: loc.name })}
-                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-200/80 hover:border-emerald-300 hover:bg-[#f0f7f4] transition-all cursor-pointer group"
                         >
                           <div className="flex items-center space-x-3">
                             <img
                               src={loc.thumbnail}
                               alt={loc.name}
-                              className="w-11 h-11 rounded-lg object-cover border border-slate-700 group-hover:scale-105 transition-transform"
+                              className="w-11 h-11 rounded-lg object-cover border border-slate-200 group-hover:scale-105 transition-transform shadow-xs"
                             />
                             <div>
-                              <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">
+                              <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#145547] transition-colors">
                                 {loc.name}
                               </h4>
-                              <p className="text-[11px] text-slate-400">
-                                <span className={loc.riskColor === 'rose' ? 'text-rose-400 font-semibold' : 'text-amber-400 font-semibold'}>
+                              <p className="text-[11px] text-slate-500">
+                                <span className={loc.riskColor === 'rose' ? 'text-rose-600 font-bold' : 'text-amber-700 font-bold'}>
                                   {loc.issue}
                                 </span>{' '}
                                 • {loc.risk}
                               </p>
-                              <p className="text-[10px] text-slate-500">
-                                HS: <b className="text-slate-300">{loc.healthScore}/100</b>
+                              <p className="text-[10px] text-slate-400">
+                                Health Score: <b className="text-slate-700 font-bold">{loc.healthScore}/100</b>
                               </p>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 transition-all" />
+                          <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#145547] transition-all" />
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
-                    <div className="flex items-center space-x-2 text-rose-400 font-bold text-[11px] uppercase mb-1">
+                  <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs">
+                    <div className="flex items-center space-x-2 text-rose-700 font-bold text-[11px] uppercase mb-1">
                       <Flame className="h-3.5 w-3.5" />
                       <span>Monsoon Warning</span>
                     </div>
-                    <p className="text-[11px] text-slate-300">
-                      Sector 17 & Industrial Area show critical surface fatigue.
+                    <p className="text-[11px] text-slate-600">
+                      Sector 17 & Industrial Area show critical surface fatigue under heavy vehicle traffic.
                     </p>
                   </div>
                 </div>
@@ -605,29 +610,29 @@ export default function UnifiedAppView({
                 RIGHT SIDEBAR: INTERACTIVE PHONE MOCKUP (WITH REAL CAMERA & SENSOR TOGGLE)
                ───────────────────────────────────────────────────────── */}
             <div className="w-full xl:w-[300px] flex-shrink-0 flex flex-col items-center justify-center py-2">
-              <div className="w-full max-w-[290px] bg-slate-950 border-[6px] border-slate-800 rounded-[38px] shadow-2xl overflow-hidden flex flex-col relative h-[590px] ring-1 ring-slate-700">
+              <div className="w-full max-w-[290px] bg-[#f8faf9] border-[6px] border-slate-200/90 rounded-[40px] shadow-xl overflow-hidden flex flex-col relative h-[590px] ring-1 ring-slate-200/80">
                 {/* Speaker Notch */}
-                <div className="w-28 h-4 bg-slate-800 rounded-b-xl mx-auto flex items-center justify-center">
-                  <div className="w-10 h-1 bg-slate-900 rounded-full" />
+                <div className="w-28 h-4 bg-slate-200 rounded-b-xl mx-auto flex items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-300 rounded-full" />
                 </div>
 
                 {/* Phone Header */}
-                <div className="px-4 py-1.5 flex items-center justify-between border-b border-slate-900 text-xs">
-                  <span className="font-bold text-[11px] text-slate-300">9:41</span>
+                <div className="px-4 py-1.5 flex items-center justify-between border-b border-slate-200 text-xs bg-white">
+                  <span className="font-bold text-[11px] text-slate-700">9:41</span>
                   <div className="flex items-center space-x-1">
-                    <span className="font-bold text-white text-xs">Jan</span>
-                    <span className="font-bold text-emerald-400 text-xs">Drishti</span>
+                    <span className="font-extrabold text-slate-900 text-xs">Jan</span>
+                    <span className="font-extrabold text-[#145547] text-xs">Drishti</span>
                   </div>
                   <Settings className="h-3.5 w-3.5 text-slate-400" />
                 </div>
 
                 {/* Status Badges */}
                 <div className="px-3 pt-2 pb-1 flex items-center justify-between text-[10px]">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-semibold flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#145547] border border-emerald-200 font-bold flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                     <span>{isMockupLive ? 'Hardware Live' : 'Connected'}</span>
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-semibold flex items-center space-x-1">
+                  <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     <span>{isMockupLive ? 'Live Sensors' : 'Demo Stream'}</span>
                   </span>
@@ -635,7 +640,7 @@ export default function UnifiedAppView({
 
                 {/* Video / Dashcam Canvas */}
                 <div className="p-3 flex-1 flex flex-col justify-between">
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner h-40 bg-slate-900 flex items-center justify-center">
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-300 shadow-inner h-40 bg-black flex items-center justify-center">
                     {isMockupLive && mockupStream ? (
                       <video
                         ref={mockupVideoRef}
@@ -655,7 +660,7 @@ export default function UnifiedAppView({
                     {/* Overlay Bounding Box */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="border-2 border-rose-500 bg-rose-500/20 w-28 h-16 rounded flex flex-col justify-between p-1">
-                        <span className="text-[9px] font-black bg-rose-600 text-white px-1 rounded w-max">
+                        <span className="text-[9px] font-black bg-rose-600 text-white px-1 rounded w-max shadow">
                           Pothole 0.87
                         </span>
                       </div>
@@ -665,52 +670,52 @@ export default function UnifiedAppView({
                   {/* Real-time Telemetry Sensor Grid */}
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {/* Camera */}
-                    <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center space-x-2">
-                      <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                    <div className="bg-white border border-slate-200/90 p-2 rounded-xl flex items-center space-x-2 shadow-xs">
+                      <div className="p-1.5 rounded-lg bg-emerald-50 text-[#145547]">
                         <Camera className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-slate-400">Camera</p>
-                        <p className="text-[10px] font-bold text-emerald-400">
+                        <p className="text-[9px] font-semibold text-slate-400">Camera</p>
+                        <p className="text-[10px] font-bold text-[#145547]">
                           {isMockupLive ? 'Rear Active' : 'Simulated'}
                         </p>
                       </div>
                     </div>
 
                     {/* GPS */}
-                    <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center space-x-2">
-                      <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                    <div className="bg-white border border-slate-200/90 p-2 rounded-xl flex items-center space-x-2 shadow-xs">
+                      <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
                         <Compass className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-slate-400">GPS</p>
-                        <p className="text-[9px] font-mono text-slate-200">
+                        <p className="text-[9px] font-semibold text-slate-400">GPS</p>
+                        <p className="text-[9px] font-mono font-bold text-slate-700">
                           {mockupGps.lat}, {mockupGps.lng}
                         </p>
                       </div>
                     </div>
 
                     {/* Accelerometer */}
-                    <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center space-x-2">
-                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                    <div className="bg-white border border-slate-200/90 p-2 rounded-xl flex items-center space-x-2 shadow-xs">
+                      <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
                         <Activity className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-slate-400">IMU / Z-Shock</p>
-                        <p className="text-[9px] font-mono text-slate-200">
+                        <p className="text-[9px] font-semibold text-slate-400">IMU / Z-Shock</p>
+                        <p className="text-[9px] font-mono font-bold text-slate-700">
                           X:{mockupAccel.x} Y:{mockupAccel.y} Z:{mockupAccel.z}
                         </p>
                       </div>
                     </div>
 
                     {/* Speed */}
-                    <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center space-x-2">
-                      <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+                    <div className="bg-white border border-slate-200/90 p-2 rounded-xl flex items-center space-x-2 shadow-xs">
+                      <div className="p-1.5 rounded-lg bg-emerald-50 text-[#145547]">
                         <Zap className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-slate-400">Speed</p>
-                        <p className="text-[10px] font-bold text-white">{mockupGps.speed} km/h</p>
+                        <p className="text-[9px] font-semibold text-slate-400">Speed</p>
+                        <p className="text-[10px] font-bold text-slate-900">{mockupGps.speed} km/h</p>
                       </div>
                     </div>
                   </div>
@@ -718,10 +723,10 @@ export default function UnifiedAppView({
                   {/* Toggle Monitoring Action Button */}
                   <button
                     onClick={toggleMockupSensors}
-                    className={`mt-2 w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all ${
+                    className={`mt-2 w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md active:scale-98 ${
                       isMockupLive
-                        ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20'
-                        : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-lg shadow-emerald-500/20'
+                        ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
+                        : 'bg-[#145547] hover:bg-[#0d4339] text-white shadow-emerald-950/15'
                     }`}
                   >
                     <span>{isMockupLive ? 'Turn Off Camera & Sensors' : 'Turn On Live Hardware Sensors'}</span>
@@ -729,20 +734,20 @@ export default function UnifiedAppView({
                 </div>
 
                 {/* Mobile Bottom Navigation Bar */}
-                <div className="bg-slate-900 border-t border-slate-800/80 px-4 py-2 flex items-center justify-between text-[10px] text-slate-400">
-                  <button onClick={() => setActiveNav('dashboard')} className="flex flex-col items-center text-blue-400 font-bold">
+                <div className="bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-between text-[10px] text-slate-500">
+                  <button onClick={() => setActiveNav('dashboard')} className="flex flex-col items-center text-[#145547] font-bold">
                     <LayoutDashboard className="h-4 w-4" />
                     <span>Home</span>
                   </button>
-                  <button onClick={() => setActiveNav('detection')} className="flex flex-col items-center hover:text-white">
+                  <button onClick={() => setActiveNav('detection')} className="flex flex-col items-center hover:text-slate-900">
                     <ScanSearch className="h-4 w-4" />
                     <span>Detections</span>
                   </button>
-                  <button onClick={() => setActiveNav('live')} className="flex flex-col items-center hover:text-white">
-                    <Radio className="h-4 w-4 text-rose-400 animate-pulse" />
+                  <button onClick={() => setActiveNav('live')} className="flex flex-col items-center hover:text-slate-900">
+                    <Radio className="h-4 w-4 text-rose-600 animate-pulse" />
                     <span>Collector</span>
                   </button>
-                  <button onClick={onOpenUpload} className="flex flex-col items-center hover:text-white">
+                  <button onClick={onOpenUpload} className="flex flex-col items-center hover:text-slate-900">
                     <Camera className="h-4 w-4" />
                     <span>Upload</span>
                   </button>
@@ -759,24 +764,24 @@ export default function UnifiedAppView({
           <div className="p-3 sm:p-6 max-w-5xl w-full mx-auto space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-                  <Radio className="h-5 w-5 text-rose-400 animate-pulse" />
+                <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center space-x-2">
+                  <Radio className="h-5 w-5 text-rose-600 animate-pulse" />
                   <span>Real-Time Mobile Collector & Telemetry Ingest</span>
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 font-medium">
                   Turn your phone or tablet into an automated road hazard scanner using browser camera, high-frequency GPS, and IMU shock sensors.
                 </p>
               </div>
               <button
                 onClick={() => setActiveNav('dashboard')}
-                className="self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700"
+                className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-[#145547] border border-slate-200/90 shadow-xs"
               >
                 Back to Dashboard
               </button>
             </div>
 
             {/* Embedded Full Sensor Module */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2 sm:p-5 shadow-2xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-2 sm:p-5 shadow-xs">
               <MobileCollector
                 onUploadSuccess={onRefresh}
                 onRefresh={onRefresh}
@@ -792,25 +797,25 @@ export default function UnifiedAppView({
           <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-xl font-bold text-white">AI Detection Studio</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">AI Detection Studio</h2>
+                <p className="text-xs text-slate-500 font-medium">
                   Upload road images or video feeds to detect potholes, cracks, and other surface damages using YOLOv8.
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-1 rounded-xl self-start sm:self-auto">
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 self-start sm:self-auto">
                 <button
                   onClick={() => setAiSubTab('image')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                    aiSubTab === 'image' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    aiSubTab === 'image' ? 'bg-[#145547] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Image Detection
                 </button>
                 <button
                   onClick={() => setAiSubTab('video')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                    aiSubTab === 'video' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    aiSubTab === 'video' ? 'bg-[#145547] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Video Detection
@@ -819,28 +824,28 @@ export default function UnifiedAppView({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
-                <div className="relative w-full h-[260px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-800 bg-black flex items-center justify-center">
+              <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col items-center">
+                <div className="relative w-full h-[260px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-300 bg-black flex items-center justify-center shadow-inner">
                   <img
                     src={activeDetectionImg}
                     alt="AI Detection Surface"
                     className="w-full h-full object-cover"
                   />
 
-                  <div className="absolute top-[52%] left-[16%] w-[28%] sm:w-[24%] h-[32%] border-2 border-rose-500 bg-rose-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-rose-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[52%] left-[16%] w-[28%] sm:w-[24%] h-[32%] border-2 border-rose-500 bg-rose-500/20 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-black bg-rose-600 text-white px-1.5 py-0.5 rounded w-max shadow">
                       Pothole 0.92
                     </span>
                   </div>
 
-                  <div className="absolute top-[42%] left-[45%] w-[25%] sm:w-[22%] h-[26%] border-2 border-amber-500 bg-amber-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[42%] left-[45%] w-[25%] sm:w-[22%] h-[26%] border-2 border-amber-500 bg-amber-500/20 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-black bg-amber-600 text-white px-1.5 py-0.5 rounded w-max shadow">
                       Crack 0.87
                     </span>
                   </div>
 
-                  <div className="absolute top-[65%] left-[46%] w-[25%] sm:w-[22%] h-[20%] border-2 border-emerald-500 bg-emerald-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[65%] left-[46%] w-[25%] sm:w-[22%] h-[20%] border-2 border-emerald-500 bg-emerald-500/20 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-black bg-[#145547] text-white px-1.5 py-0.5 rounded w-max shadow">
                       Patch 0.76
                     </span>
                   </div>
@@ -848,14 +853,14 @@ export default function UnifiedAppView({
 
                 <button
                   onClick={onOpenUpload}
-                  className="mt-4 px-6 py-2.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-2 shadow-lg shadow-blue-500/20"
+                  className="mt-4 px-6 py-2.5 rounded-xl font-bold text-xs bg-[#145547] hover:bg-[#0d4339] text-white flex items-center space-x-2 shadow-md shadow-emerald-950/15 transition-all active:scale-98"
                 >
                   <Camera className="h-4 w-4" />
-                  <span>Upload Image</span>
+                  <span>Upload Image for AI Scan</span>
                 </button>
-                <p className="text-[10px] text-slate-500 mt-1">Supports JPG, PNG (Max 10MB)</p>
+                <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Supports JPG, PNG (Max 10MB) • Real-time TensorRT YOLOv8</p>
 
-                <div className="flex items-center space-x-3 mt-4 pt-3 border-t border-slate-800/80 w-full overflow-x-auto pb-1">
+                <div className="flex items-center space-x-3 mt-4 pt-3 border-t border-slate-200/80 w-full overflow-x-auto pb-1">
                   {[
                     '/images/roads/road_pothole_d00.jpg',
                     '/images/roads/road_longitudinal_d20.jpg',
@@ -866,65 +871,65 @@ export default function UnifiedAppView({
                     <img
                       key={idx}
                       src={thumb}
-                      alt="Sample"
+                      alt="Sample road detection"
                       onClick={() => setActiveDetectionImg(thumb)}
-                      className={`w-16 h-12 sm:w-20 sm:h-14 rounded-lg object-cover cursor-pointer border-2 transition-all flex-shrink-0 ${
-                        activeDetectionImg === thumb ? 'border-blue-500 scale-105' : 'border-slate-800 opacity-60 hover:opacity-100'
+                      className={`w-16 h-12 sm:w-20 sm:h-14 rounded-xl object-cover cursor-pointer border-2 transition-all flex-shrink-0 shadow-xs ${
+                        activeDetectionImg === thumb ? 'border-[#145547] scale-105 shadow-md' : 'border-slate-200 opacity-70 hover:opacity-100'
                       }`}
                     />
                   ))}
                 </div>
               </div>
 
-              <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+              <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-white mb-4">Detection Results</h3>
+                  <h3 className="text-sm font-bold text-slate-900 mb-4">Detection Results</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 border border-rose-200">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-lg bg-rose-500 text-white">
+                        <div className="p-2 rounded-lg bg-rose-600 text-white shadow-xs">
                           <Flame className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-bold text-rose-300">Potholes</span>
+                        <span className="text-xs font-bold text-rose-800">Potholes</span>
                       </div>
-                      <span className="text-lg font-black text-rose-400">3</span>
+                      <span className="text-lg font-black text-rose-700">3</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-lg bg-amber-500 text-white">
+                        <div className="p-2 rounded-lg bg-amber-600 text-white shadow-xs">
                           <Activity className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-bold text-amber-300">Cracks</span>
+                        <span className="text-xs font-bold text-amber-800">Cracks</span>
                       </div>
-                      <span className="text-lg font-black text-amber-400">2</span>
+                      <span className="text-lg font-black text-amber-700">2</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-lg bg-emerald-500 text-white">
+                        <div className="p-2 rounded-lg bg-[#145547] text-white shadow-xs">
                           <CheckCircle2 className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-bold text-emerald-300">Patch Damage</span>
+                        <span className="text-xs font-bold text-[#145547]">Patch Damage</span>
                       </div>
-                      <span className="text-lg font-black text-emerald-400">1</span>
+                      <span className="text-lg font-black text-[#145547]">1</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-lg bg-indigo-500 text-white">
+                        <div className="p-2 rounded-lg bg-slate-700 text-white shadow-xs">
                           <Droplets className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-bold text-indigo-300">Other</span>
+                        <span className="text-xs font-bold text-slate-700">Other Distress</span>
                       </div>
-                      <span className="text-lg font-black text-indigo-400">0</span>
+                      <span className="text-lg font-black text-slate-700">0</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 text-[11px] text-slate-400 mt-4">
-                  <p>Inference Model: <b className="text-slate-200">YOLOv8-IndiaRoads</b></p>
-                  <p>Latency: <b className="text-emerald-400">28ms</b> • TensorRT Ready</p>
+                <div className="p-3.5 bg-[#f0f7f4] rounded-xl border border-emerald-200/80 text-[11px] text-slate-600 mt-4 space-y-1">
+                  <p>Inference Model: <b className="text-slate-900">YOLOv8-IndiaRoads (RDD2022)</b></p>
+                  <p>Latency: <b className="text-[#145547] font-bold">28ms</b> • Edge TPU / GPU Acceleration</p>
                 </div>
               </div>
             </div>
@@ -938,15 +943,15 @@ export default function UnifiedAppView({
           <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">Road Analysis & Risk Prediction</h2>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Road Analysis & Risk Prediction</h2>
                 <div className="flex items-center space-x-2 mt-1">
-                  <MapPin className="h-4 w-4 text-amber-400" />
-                  <span className="text-xs font-semibold text-slate-200">Sector 22, Chandigarh</span>
+                  <MapPin className="h-4 w-4 text-[#145547]" />
+                  <span className="text-xs font-bold text-slate-700">Sector 22, Chandigarh</span>
                 </div>
               </div>
               <button
                 onClick={() => setActiveNav('dashboard')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-[#145547] border border-slate-200/90 shadow-xs"
               >
                 View on Map
               </button>
@@ -954,14 +959,14 @@ export default function UnifiedAppView({
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Infrastructure Health Score Gauge */}
-              <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center">
-                <span className="text-xs uppercase font-bold text-slate-400 mb-4">Infrastructure Health Score</span>
+              <div className="md:col-span-6 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col items-center justify-center">
+                <span className="text-xs uppercase font-bold text-slate-500 mb-4">Infrastructure Health Score</span>
                 <div className="relative w-52 h-28 flex flex-col items-center justify-end">
                   <svg className="w-52 h-28 overflow-visible" viewBox="0 0 200 110">
                     <path
                       d="M 20 100 A 80 80 0 0 1 180 100"
                       fill="none"
-                      stroke="#1e293b"
+                      stroke="#e2e8f0"
                       strokeWidth="20"
                       strokeLinecap="round"
                     />
@@ -976,14 +981,14 @@ export default function UnifiedAppView({
                       <linearGradient id="gauge-gradient" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="#ef4444" />
                         <stop offset="50%" stopColor="#f59e0b" />
-                        <stop offset="100%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#145547" />
                       </linearGradient>
                     </defs>
                   </svg>
                   <div className="absolute bottom-0 text-center">
-                    <span className="text-3xl font-black text-white">58</span>
-                    <span className="text-sm font-semibold text-slate-400">/100</span>
-                    <div className="mt-1 px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                    <span className="text-3xl font-black text-slate-900">58</span>
+                    <span className="text-sm font-bold text-slate-400">/100</span>
+                    <div className="mt-1 px-3 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
                       Medium Risk
                     </div>
                   </div>
@@ -991,22 +996,22 @@ export default function UnifiedAppView({
               </div>
 
               {/* Risk Factors Breakdown */}
-              <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <span className="text-xs uppercase font-bold text-slate-400 block mb-4">Risk Factors</span>
+              <div className="md:col-span-6 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                <span className="text-xs uppercase font-bold text-slate-500 block mb-4">Risk Factors</span>
                 <div className="space-y-3">
                   {[
                     { label: 'Pothole Severity', value: 70, color: 'bg-rose-500' },
                     { label: 'Crack Severity', value: 45, color: 'bg-amber-500' },
                     { label: 'Vehicle Vibration', value: 60, color: 'bg-yellow-500' },
-                    { label: 'Traffic Exposure', value: 80, color: 'bg-blue-500' },
-                    { label: 'Rainfall Vulnerability', value: 55, color: 'bg-indigo-500' },
+                    { label: 'Traffic Exposure', value: 80, color: 'bg-blue-600' },
+                    { label: 'Rainfall Vulnerability', value: 55, color: 'bg-[#145547]' },
                   ].map((rf) => (
                     <div key={rf.label} className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-300 font-medium">{rf.label}</span>
-                        <span className="text-slate-200 font-mono">{rf.value}%</span>
+                        <span className="text-slate-600 font-semibold">{rf.label}</span>
+                        <span className="text-slate-900 font-bold font-mono">{rf.value}%</span>
                       </div>
-                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${rf.color} rounded-full`}
                           style={{ width: `${rf.value}%` }}
@@ -1019,13 +1024,13 @@ export default function UnifiedAppView({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              <div className="md:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <span className="text-xs uppercase font-bold text-slate-400 block mb-4">Predicted Risk (Next 6 Months)</span>
+              <div className="md:col-span-8 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                <span className="text-xs uppercase font-bold text-slate-500 block mb-4">Predicted Risk (Next 6 Months)</span>
                 <div className="h-44 w-full relative">
                   <svg className="w-full h-full" viewBox="0 0 500 150" preserveAspectRatio="none">
-                    <line x1="0" y1="130" x2="500" y2="130" stroke="#1e293b" strokeDasharray="4" />
-                    <line x1="0" y1="90" x2="500" y2="90" stroke="#1e293b" strokeDasharray="4" />
-                    <line x1="0" y1="50" x2="500" y2="50" stroke="#1e293b" strokeDasharray="4" />
+                    <line x1="0" y1="130" x2="500" y2="130" stroke="#e2e8f0" strokeDasharray="4" />
+                    <line x1="0" y1="90" x2="500" y2="90" stroke="#e2e8f0" strokeDasharray="4" />
+                    <line x1="0" y1="50" x2="500" y2="50" stroke="#e2e8f0" strokeDasharray="4" />
 
                     <path
                       d="M 30 120 Q 150 110, 250 80 T 470 30"
@@ -1033,14 +1038,14 @@ export default function UnifiedAppView({
                       stroke="#f59e0b"
                       strokeWidth="3"
                     />
-                    <circle cx="30" cy="120" r="4" fill="#10b981" />
-                    <circle cx="120" cy="115" r="4" fill="#10b981" />
+                    <circle cx="30" cy="120" r="4" fill="#145547" />
+                    <circle cx="120" cy="115" r="4" fill="#145547" />
                     <circle cx="210" cy="95" r="4" fill="#f59e0b" />
                     <circle cx="300" cy="75" r="4" fill="#f59e0b" />
                     <circle cx="390" cy="50" r="4" fill="#ef4444" />
                     <circle cx="470" cy="30" r="4" fill="#ef4444" />
                   </svg>
-                  <div className="flex justify-between text-[11px] text-slate-500 mt-2 px-4">
+                  <div className="flex justify-between text-[11px] text-slate-500 mt-2 px-4 font-semibold">
                     <span>Nov</span>
                     <span>Dec</span>
                     <span>Jan</span>
@@ -1051,23 +1056,23 @@ export default function UnifiedAppView({
                 </div>
               </div>
 
-              <div className="md:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div className="md:col-span-4 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
                 <div>
-                  <span className="text-xs uppercase font-bold text-slate-400 block mb-3">Prediction Result</span>
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
-                    <p className="text-xs font-bold text-rose-400 flex items-center space-x-1 mb-1">
+                  <span className="text-xs uppercase font-bold text-slate-500 block mb-3">Prediction Result</span>
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl mb-4">
+                    <p className="text-xs font-bold text-rose-700 flex items-center space-x-1 mb-1">
                       <Flame className="h-3.5 w-3.5" />
                       <span>High Likelihood of Deterioration</span>
                     </p>
-                    <p className="text-[11px] text-slate-300">
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
                       Projected road surface failure in next 3 months due to micro-crack propagation under heavy traffic.
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-[11px] uppercase font-bold text-slate-400 block mb-2">Recommended Action</span>
-                  <ul className="text-xs text-slate-200 space-y-1.5 list-disc pl-4">
+                  <span className="text-[11px] uppercase font-bold text-slate-500 block mb-2">Recommended Action</span>
+                  <ul className="text-xs text-slate-700 space-y-1.5 list-disc pl-4 font-medium">
                     <li>Patch repair within 30 days</li>
                     <li>Increased monitoring schedule</li>
                     <li>Drainage inspection before monsoon</li>
@@ -1085,22 +1090,22 @@ export default function UnifiedAppView({
           <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">Repair Verification</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Repair Verification</h2>
+                <p className="text-xs text-slate-500 font-medium">
                   Dual-image comparison & AI damage clearance verification.
                 </p>
               </div>
               <button
                 onClick={() => setActiveNav('dashboard')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-[#145547] border border-slate-200/90 shadow-xs"
               >
                 View on Map
               </button>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
-                <div className="relative rounded-xl overflow-hidden border border-rose-500/40 h-56 sm:h-72">
+                <div className="relative rounded-xl overflow-hidden border border-rose-200 h-56 sm:h-72 shadow-xs">
                   <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow z-10">
                     Before Repair
                   </span>
@@ -1111,8 +1116,8 @@ export default function UnifiedAppView({
                   />
                 </div>
 
-                <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 h-56 sm:h-72">
-                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold text-xs shadow z-10">
+                <div className="relative rounded-xl overflow-hidden border border-emerald-200 h-56 sm:h-72 shadow-xs">
+                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-[#145547] text-white font-bold text-xs shadow z-10">
                     After Repair
                   </span>
                   <img
@@ -1123,37 +1128,37 @@ export default function UnifiedAppView({
                 </div>
               </div>
 
-              <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+              <div className="mt-6 p-4 rounded-xl bg-[#f0f7f4] border border-emerald-200/80 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#145547] flex items-center justify-center text-white font-bold shadow-sm flex-shrink-0">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Repair Verified</h4>
-                    <p className="text-xs text-slate-400">
+                    <h4 className="text-sm font-bold text-slate-900">Repair Verified Closed</h4>
+                    <p className="text-xs text-slate-600">
                       The road surface has been significantly improved. Structural defects cleared with 96% AI confidence.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 text-xs">
                 <div>
-                  <span className="text-slate-400">Location</span>
-                  <p className="font-bold text-slate-200 mt-0.5">Sector 34, Chandigarh</p>
+                  <span className="text-slate-400 font-medium">Location</span>
+                  <p className="font-bold text-slate-800 mt-0.5">Sector 34, Chandigarh</p>
                 </div>
                 <div>
-                  <span className="text-slate-400">Repair Date</span>
-                  <p className="font-bold text-slate-200 mt-0.5">15 Oct 2026</p>
+                  <span className="text-slate-400 font-medium">Repair Date</span>
+                  <p className="font-bold text-slate-800 mt-0.5">15 Oct 2026</p>
                 </div>
                 <div>
-                  <span className="text-slate-400">Verification Date</span>
-                  <p className="font-bold text-slate-200 mt-0.5">20 Oct 2026</p>
+                  <span className="text-slate-400 font-medium">Verification Date</span>
+                  <p className="font-bold text-slate-800 mt-0.5">20 Oct 2026</p>
                 </div>
                 <div>
-                  <span className="text-slate-400">Health Score Change</span>
-                  <p className="font-bold text-emerald-400 mt-0.5">
-                    35 ➔ 82 <span className="text-emerald-300">(+47)</span>
+                  <span className="text-slate-400 font-medium">Health Score Change</span>
+                  <p className="font-bold text-[#145547] mt-0.5">
+                    35 ➔ 82 <span className="text-emerald-600">(+47)</span>
                   </p>
                 </div>
               </div>
@@ -1166,40 +1171,68 @@ export default function UnifiedAppView({
            ─────────────────────────────────────────────────────────── */}
         {activeNav === 'gis' && (
           <div className="p-6 max-w-6xl w-full mx-auto space-y-4">
-            <div><h3 className="text-lg font-bold text-white">Accepted reports on GIS</h3><p className="text-xs text-slate-400">Citizen reports appear as cyan pins alongside verified inspection detections.</p></div>
-            <div className="h-[620px] rounded-2xl overflow-hidden border border-slate-800"><RoadMap geojson={roadsGeoJson} observations={observations} height="100%" /></div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Accepted Reports on GIS</h3>
+              <p className="text-xs text-slate-500 font-medium">Citizen reports appear as geotagged pins alongside verified inspection detections.</p>
+            </div>
+            <div className="h-[620px] rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs">
+              <RoadMap geojson={roadsGeoJson} observations={observations} height="100%" />
+            </div>
           </div>
         )}
 
         {activeNav === 'reports' && (
           <div className="p-6 max-w-6xl w-full mx-auto space-y-4">
-            <div className="flex items-end justify-between"><div><h3 className="text-lg font-bold text-white">Citizen photo reports</h3><p className="text-xs text-slate-400">Accepted submissions with GPS, capture time, image evidence, and YOLO findings.</p></div><button onClick={onRefresh} className="text-xs px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">Refresh</button></div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex items-end justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Citizen Photo Reports</h3>
+                <p className="text-xs text-slate-500 font-medium">Accepted submissions with GPS, capture time, image evidence, and YOLO findings.</p>
+              </div>
+              <button
+                onClick={onRefresh}
+                className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition"
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="grid gap-3.5 md:grid-cols-2">
               {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen').map(report => {
                 const detection = report.detections?.[0] || {};
-                return <div key={report.report_id || report.observation_id} className="p-4 rounded-xl bg-slate-900 border border-emerald-500/20 flex gap-3">
-                  <img src={report.annotated_image_url || report.image_url} alt="Citizen road report" className="w-24 h-20 rounded-lg object-cover bg-slate-800" />
-                  <div className="min-w-0 text-xs"><p className="font-bold text-white">{detection.class_name || 'Road hazard'} <span className="text-emerald-400">• Accepted</span></p><p className="text-slate-400 truncate">{report.matched_road_name || report.sector || 'GPS field location'}</p><p className="text-slate-400">{new Date(report.captured_at).toLocaleString()}</p><p className="font-mono text-[10px] text-slate-500 truncate">{report.report_id || report.observation_id}</p><p className="text-amber-400 mt-1">{(detection.severity || 'medium').toUpperCase()} • {Math.round((detection.confidence || 0) * 100)}% confidence</p></div>
-                </div>;
+                return (
+                  <div key={report.report_id || report.observation_id} className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex gap-3">
+                    <img src={report.annotated_image_url || report.image_url} alt="Citizen road report" className="w-24 h-20 rounded-xl object-cover bg-slate-100 border border-slate-200 shadow-xs" />
+                    <div className="min-w-0 text-xs">
+                      <p className="font-bold text-slate-900">{detection.class_name || 'Road hazard'} <span className="text-[#145547]">• Accepted</span></p>
+                      <p className="text-slate-500 truncate">{report.matched_road_name || report.sector || 'GPS field location'}</p>
+                      <p className="text-slate-400">{new Date(report.captured_at).toLocaleString()}</p>
+                      <p className="font-mono text-[10px] text-slate-400 truncate">{report.report_id || report.observation_id}</p>
+                      <p className="text-[#145547] font-bold mt-1">{(detection.severity || 'medium').toUpperCase()} • {Math.round((detection.confidence || 0) * 100)}% confidence</p>
+                    </div>
+                  </div>
+                );
               })}
-              {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen').length === 0 && <div className="md:col-span-2 p-8 rounded-xl bg-slate-900 border border-slate-800 text-center text-xs text-slate-500">No accepted citizen photo reports yet.</div>}
+              {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen').length === 0 && (
+                <div className="md:col-span-2 p-8 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-500 shadow-xs">
+                  No accepted citizen photo reports yet.
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {['vehicles', 'settings'].includes(activeNav) && (
           <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-8 text-center space-y-4 shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-[#f0f7f4] text-[#145547] border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
                 <MapPin className="h-7 w-7" />
               </div>
-              <h3 className="text-lg font-bold text-white capitalize">{activeNav} Module Active</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="text-lg font-black text-slate-900 capitalize">{activeNav} Module Active</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
                 Live synchronized GIS layer for {activeNav}. Click Dashboard to return to primary overview.
               </p>
               <button
                 onClick={() => setActiveNav('dashboard')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#145547] hover:bg-[#0d4339] text-white shadow-md shadow-emerald-950/15"
               >
                 Return to Dashboard
               </button>
