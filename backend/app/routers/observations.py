@@ -277,6 +277,8 @@ async def upload_observation(
             "image_sha256": image_sha256,
             "vehicle_id": vehicle_id,
             "location": {"type": "Point", "coordinates": [longitude, latitude]},
+            "latitude": latitude,
+            "longitude": longitude,
             "altitude": altitude or 340.0,
             "speed_kmph": speed_kmph or 36.0,
             "telemetry_z_shock": telemetry_z_shock or 2.5,

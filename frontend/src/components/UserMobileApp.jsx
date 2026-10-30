@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Camera,
   MapPin,
@@ -106,15 +106,22 @@ export default function UserMobileApp({
     return `00:${m}:${s}`;
   };
 
-  // Real GPS Geolocation State
+  // Real GPS Geolocation State (Status: 'Locating' | 'GPS Acquired' | 'GPS Unavailable')
+  const [gpsStatus, setGpsStatus] = useState('Locating');
+  const [gpsError, setGpsError] = useState(null);
   const [userCoords, setUserCoords] = useState({
-    lat: 30.7450,
-    lng: 76.7760,
-    accuracy: 12,
-    city: 'Detecting Location...',
-    isReal: false
+    lat: null,
+    lng: null,
+    accuracy: null,
+    altitude: null,
+    speed: null,
+    heading: null,
+    sector: null,
+    address: null,
+    timestamp: null
   });
-  const [isLocatingDevice, setIsLocatingDevice] = useState(false);
+  const gpsWatchIdRef = useRef(null);
+  const lastGeocodeRef = useRef({ time: 0, lat: null, lng: null });
 
   // Real Captured Photo or Video Blob and Preview for direct posting
   const [capturedBlob, setCapturedBlob] = useState(null);
@@ -133,40 +140,122 @@ export default function UserMobileApp({
   const fileInputRef = useRef(null);
   const cameraStreamRef = useRef(null);
 
-  // Auto-acquire real device GPS on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      setIsLocatingDevice(true);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setIsLocatingDevice(false);
-          const { latitude, longitude, accuracy } = pos.coords;
-          setUserCoords({
-            lat: latitude,
-            lng: longitude,
-            accuracy: Math.round(accuracy || 10),
-            city: 'Live Location',
-            isReal: true
-          });
+  // Continuous high-accuracy GPS tracking using navigator.geolocation.watchPosition()
+  const startGpsWatcher = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('GPS Unavailable');
+      setGpsError('Geolocation is not supported by your device or browser.');
+      return;
+    }
 
-          // Reverse geocode via OpenStreetMap Nominatim
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-            .then(r => r.json())
-            .then(data => {
-              const detectedCity = data.address?.city || data.address?.town || data.address?.suburb || data.address?.state_district || 'Live Location';
-              setUserCoords(prev => ({ ...prev, city: detectedCity }));
-            })
-            .catch(() => {});
-        },
-        (err) => {
-          setIsLocatingDevice(false);
-          console.warn('Device GPS unavailable, falling back to default:', err);
-          setUserCoords(prev => ({ ...prev, city: 'Chandigarh' }));
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
+    setGpsStatus('Locating');
+    setGpsError(null);
+
+    if (gpsWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+      gpsWatchIdRef.current = null;
+    }
+
+    const options = {
+      enableHighAccuracy: true,
+      maximumAge: 2000,
+      timeout: 15000
+    };
+
+    const handleSuccess = (pos) => {
+      const { latitude, longitude, accuracy, altitude, speed, heading } = pos.coords;
+      const ts = new Date(pos.timestamp || Date.now()).toISOString();
+
+      setUserCoords(prev => ({
+        ...prev,
+        lat: latitude,
+        lng: longitude,
+        accuracy: Math.round(accuracy || 5),
+        altitude: altitude !== null && altitude !== undefined ? Math.round(altitude) : null,
+        speed: speed !== null && speed !== undefined ? Number((speed * 3.6).toFixed(1)) : null,
+        heading: heading !== null && heading !== undefined ? Math.round(heading) : null,
+        timestamp: ts
+      }));
+      setGpsStatus('GPS Acquired');
+      setGpsError(null);
+
+      // Reverse geocoding via OpenStreetMap Nominatim
+      const now = Date.now();
+      const last = lastGeocodeRef.current;
+      const moved = !last.lat || Math.hypot(latitude - last.lat, longitude - last.lng) > 0.0004;
+      if (moved && now - last.time > 4000) {
+        lastGeocodeRef.current = { time: now, lat: latitude, lng: longitude };
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.address) {
+              const a = data.address;
+              const sectorOrNeighbourhood = a.suburb || a.neighbourhood || a.quarter || a.residential || a.city_district || '';
+              const road = a.road || a.street || '';
+              const city = a.city || a.town || a.municipality || a.state_district || 'Local Area';
+              const sectorLabel = sectorOrNeighbourhood || road || city;
+              const shortAddress = road && sectorOrNeighbourhood ? `${road}, ${sectorOrNeighbourhood}` : (sectorOrNeighbourhood || road || city);
+
+              setUserCoords(prev => ({
+                ...prev,
+                sector: sectorLabel,
+                address: shortAddress
+              }));
+            }
+          })
+          .catch(err => {
+            console.warn('Reverse geocode warning:', err);
+          });
+      }
+    };
+
+    const handleError = (err) => {
+      console.warn('GPS watcher error:', err);
+      if (err.code === 1) { // PERMISSION_DENIED
+        setGpsStatus('GPS Unavailable');
+        setGpsError('Location permission was denied. Please allow location access in your browser site settings.');
+        setUserCoords({
+          lat: null,
+          lng: null,
+          accuracy: null,
+          altitude: null,
+          speed: null,
+          heading: null,
+          sector: null,
+          address: null,
+          timestamp: null
+        });
+      } else if (err.code === 2) { // POSITION_UNAVAILABLE
+        setGpsStatus('GPS Unavailable');
+        setGpsError('GPS signal is unavailable. Please check that phone Location / GPS is enabled.');
+      } else if (err.code === 3) { // TIMEOUT
+        setUserCoords(prev => {
+          if (prev.lat === null) {
+            setGpsStatus('GPS Unavailable');
+            setGpsError('GPS acquisition timed out. Acquiring satellite lock...');
+          }
+          return prev;
+        });
+      }
+    };
+
+    try {
+      gpsWatchIdRef.current = navigator.geolocation.watchPosition(handleSuccess, handleError, options);
+    } catch (e) {
+      setGpsStatus('GPS Unavailable');
+      setGpsError(e.message || 'Failed to start GPS tracking.');
     }
   }, []);
+
+  useEffect(() => {
+    startGpsWatcher();
+    return () => {
+      if (gpsWatchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+        gpsWatchIdRef.current = null;
+      }
+    };
+  }, [startGpsWatcher]);
 
   // ── REAR CAMERA & STREAM LIFECYCLE ──
   const startRearCamera = async () => {
@@ -291,8 +380,12 @@ export default function UserMobileApp({
       lat: userCoords.lat,
       lng: userCoords.lng,
       accuracy: userCoords.accuracy,
-      city: userCoords.city,
-      isReal: userCoords.isReal
+      altitude: userCoords.altitude,
+      speed: userCoords.speed,
+      heading: userCoords.heading,
+      sector: userCoords.sector,
+      address: userCoords.address,
+      status: gpsStatus
     });
 
     // 1. Grab frame from live video feed
@@ -384,8 +477,12 @@ export default function UserMobileApp({
       lat: userCoords.lat,
       lng: userCoords.lng,
       accuracy: userCoords.accuracy,
-      city: userCoords.city,
-      isReal: userCoords.isReal
+      altitude: userCoords.altitude,
+      speed: userCoords.speed,
+      heading: userCoords.heading,
+      sector: userCoords.sector,
+      address: userCoords.address,
+      status: gpsStatus
     });
     setCapturedBlob(file);
     setCapturedPreview(preview);
@@ -470,8 +567,12 @@ export default function UserMobileApp({
           lat: userCoords.lat,
           lng: userCoords.lng,
           accuracy: userCoords.accuracy,
-          city: userCoords.city,
-          isReal: userCoords.isReal
+          altitude: userCoords.altitude,
+          speed: userCoords.speed,
+          heading: userCoords.heading,
+          sector: userCoords.sector,
+          address: userCoords.address,
+          status: gpsStatus
         });
         setUploadSuccessData(null);
         setUploadError(null);
@@ -520,16 +621,28 @@ export default function UserMobileApp({
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB');
 
       const activeCoords = lockedCoords || userCoords;
-      const finalLat = (activeCoords.lat || 30.7450).toFixed(5);
-      const finalLng = (activeCoords.lng || 76.7760).toFixed(5);
-      const finalSector = activeCoords.city || 'Field Location';
+
+      if (!activeCoords || activeCoords.lat === null || activeCoords.lng === null) {
+        throw new Error('Real device GPS location is required. Please grant location permission and wait for "GPS Acquired" before uploading your report.');
+      }
+
+      const finalLat = Number(activeCoords.lat).toFixed(6);
+      const finalLng = Number(activeCoords.lng).toFixed(6);
+      const finalSector = activeCoords.sector || activeCoords.address || 'Field Location';
       const exactTime = captureTimestamp || new Date().toISOString();
 
       formData.append('latitude', finalLat);
       formData.append('longitude', finalLng);
       formData.append('sector', finalSector);
-      formData.append('speed_kmph', '34.5');
-      formData.append('telemetry_z_shock', '3.1');
+      if (activeCoords.accuracy !== null && activeCoords.accuracy !== undefined) {
+        formData.append('accuracy_m', String(activeCoords.accuracy));
+      }
+      if (activeCoords.altitude !== null && activeCoords.altitude !== undefined) {
+        formData.append('altitude', String(activeCoords.altitude));
+      }
+      if (activeCoords.speed !== null && activeCoords.speed !== undefined) {
+        formData.append('speed_kmph', String(activeCoords.speed));
+      }
       formData.append('captured_at', exactTime);
       formData.append('report_id', reportId || `RPT-${Date.now()}`);
 
@@ -830,11 +943,36 @@ export default function UserMobileApp({
               </div>
 
               <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#f0f7f4] border border-emerald-200/80 text-[10px] text-[#145547] font-semibold">
-                  <MapPin className={`h-3 w-3 ${userCoords.isReal ? 'text-blue-500 animate-pulse' : 'text-[#145547]'}`} />
-                  <span className="font-bold max-w-[95px] truncate">{userCoords.city || 'Chandigarh'}</span>
-                  <span className="text-emerald-300">•</span>
-                  <span className="text-slate-500">{userCoords.isReal ? 'Live GPS' : '28°C'}</span>
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#f0f7f4] border border-emerald-200/80 text-[10px] text-[#145547] font-semibold shadow-2xs">
+                  {gpsStatus === 'GPS Acquired' ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="font-bold max-w-[100px] truncate text-slate-800" title={userCoords.address || userCoords.sector}>
+                        {userCoords.sector || userCoords.address || 'GPS Acquired'}
+                      </span>
+                      <span className="text-emerald-300">•</span>
+                      <span className="text-[#145547] font-mono font-bold">±{userCoords.accuracy}m</span>
+                    </>
+                  ) : gpsStatus === 'Locating' ? (
+                    <>
+                      <Loader2 className="h-3 w-3 text-amber-600 animate-spin" />
+                      <span className="font-bold text-amber-700">Locating...</span>
+                      <span className="text-amber-300">•</span>
+                      <span className="text-amber-600 font-mono text-[9px]">Acquiring GPS</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-rose-500 shrink-0" />
+                      <button
+                        type="button"
+                        onClick={startGpsWatcher}
+                        className="font-bold text-rose-700 underline text-[10px] hover:text-rose-800"
+                        title="Click to retry GPS satellite acquisition"
+                      >
+                        GPS Unavailable (Retry)
+                      </button>
+                    </>
+                  )}
                 </div>
                 {onLogout && (
                   <button
@@ -908,26 +1046,31 @@ export default function UserMobileApp({
                     </div>
 
                     <div className="space-y-2">
-                      {[
-                        { title: 'Pothole', loc: 'Sector 17, Chandigarh', time: '2 min ago', status: 'Submitted', img: '/images/roads/road_pothole_d00.jpg' },
-                        { title: 'Crack', loc: 'Sector 22, Chandigarh', time: '20 min ago', status: 'Submitted', img: '/images/roads/road_longitudinal_d20.jpg' },
-                        { title: 'Patch Damage', loc: 'Sector 34, Chandigarh', time: '1 hour ago', status: 'Submitted', img: '/images/roads/road_alligator_d10.jpg' }
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
-                          <div className="flex items-center space-x-2.5">
-                            <img src={item.img} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs" />
-                            <div>
-                              <p className="text-xs font-bold text-slate-900">{item.title}</p>
-                              <p className="text-[10px] text-slate-500 font-medium">{item.loc}</p>
-                              <span className="text-[9px] text-[#145547] font-bold flex items-center space-x-1 mt-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                                <span>{item.status}</span>
-                              </span>
+                      {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).slice(0, 3).map((item, i) => {
+                        const firstDet = item.detections?.[0] || {};
+                        const imgUrl = item.annotated_image_url || item.image_url || '/images/roads/road_pothole_d00.jpg';
+                        return (
+                          <div key={item.observation_id || i} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
+                            <div className="flex items-center space-x-2.5">
+                              <img src={imgUrl} alt="Report Thumbnail" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs" onError={(e) => { e.target.onerror = null; e.target.src = '/images/roads/road_pothole_d00.jpg'; }} />
+                              <div>
+                                <p className="text-xs font-bold text-slate-900">{firstDet.class_name || (item.video_url ? 'Road Video Inspection' : 'Road Surface Hazard')}</p>
+                                <p className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{item.matched_road_name || item.sector || 'Field location'}</p>
+                                <span className="text-[9px] text-[#145547] font-bold flex items-center space-x-1 mt-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                  <span>{item.report_status === 'accepted' ? 'Geotagged' : 'Processed'}</span>
+                                </span>
+                              </div>
                             </div>
+                            <span className="text-[10px] text-slate-400 font-medium">{new Date(item.captured_at || item.created_at || Date.now()).toLocaleTimeString()}</span>
                           </div>
-                          <span className="text-[10px] text-slate-400 font-medium">{item.time}</span>
+                        );
+                      })}
+                      {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).length === 0 && (
+                        <div className="p-3 text-center text-xs text-slate-400 bg-white border border-slate-200/80 rounded-xl">
+                          No recent citizen reports yet. Tap "Record Road Defect" to log road damage.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </>
@@ -1109,7 +1252,7 @@ export default function UserMobileApp({
                           </p>
 
                           <p className="text-[11px] text-slate-500">
-                            📍 {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
+                            📍 {uploadSuccessData.matched_road_name || uploadSuccessData.sector || 'Field Inspection Location'}
                           </p>
 
                           {/* Video Inspection Summary Card if available */}
@@ -1173,22 +1316,60 @@ export default function UserMobileApp({
                           </div>
 
                           {/* Preserved Telemetry: Locked GPS & Capture Timestamp */}
-                          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
-                            <div className="flex items-center space-x-1.5 truncate">
-                              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                              <span className="truncate font-medium">
-                                {(lockedCoords?.lat ?? userCoords.lat).toFixed(4)}°N, {(lockedCoords?.lng ?? userCoords.lng).toFixed(4)}°E
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-[11px]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Capture Telemetry</span>
+                              <span className="text-slate-400 font-mono text-[10px] flex items-center space-x-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                <span>{new Date(captureTimestamp || Date.now()).toLocaleTimeString()}</span>
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1.5 justify-end text-slate-500">
-                              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span>{new Date(captureTimestamp || Date.now()).toLocaleTimeString()}</span>
-                            </div>
-                          </div>
 
-                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-                            <span>Sector: <strong className="text-slate-800">{lockedCoords?.city || userCoords.city || 'Chandigarh'}</strong></span>
-                            <span className="text-[#145547] font-mono font-bold">±{lockedCoords?.accuracy || userCoords.accuracy}m Accuracy</span>
+                            {lockedCoords && lockedCoords.lat !== null ? (
+                              <>
+                                <div className="flex items-center space-x-1.5 text-slate-800 font-medium">
+                                  <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  <span className="font-mono text-xs text-[#145547] font-bold">
+                                    {Number(lockedCoords.lat).toFixed(5)}° N, {Number(lockedCoords.lng).toFixed(5)}° E
+                                  </span>
+                                  <span className="text-slate-400 text-[10px]">(±{lockedCoords.accuracy}m fix)</span>
+                                </div>
+                                <div className="text-[10px] text-slate-600 flex items-center justify-between">
+                                  <span>Area / Sector: <strong className="text-slate-900">{lockedCoords.sector || lockedCoords.address || 'Detected Location'}</strong></span>
+                                  <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Real Device GPS</span>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5">
+                                <div className="flex items-center space-x-1.5">
+                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                                  <span className="font-semibold">GPS was not acquired at capture time</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (userCoords.lat !== null) {
+                                      setLockedCoords({
+                                        lat: userCoords.lat,
+                                        lng: userCoords.lng,
+                                        accuracy: userCoords.accuracy,
+                                        altitude: userCoords.altitude,
+                                        speed: userCoords.speed,
+                                        heading: userCoords.heading,
+                                        sector: userCoords.sector,
+                                        address: userCoords.address,
+                                        status: gpsStatus
+                                      });
+                                    } else {
+                                      startGpsWatcher();
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-all"
+                                >
+                                  {userCoords.lat !== null ? 'Tag Current Real GPS' : 'Acquire GPS Now'}
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {uploadError && (
@@ -1234,18 +1415,36 @@ export default function UserMobileApp({
                        ════════════════════════════════════════════════════════════ */
                     <div className="space-y-3">
                       {/* Live GPS Telemetry Status Bar */}
-                      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-white border border-slate-200/90 shadow-xs text-[10px]">
-                        <div className="flex items-center space-x-1.5 text-slate-600">
-                          <MapPin className={`w-3.5 h-3.5 ${userCoords.isReal ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
-                          <span className="font-semibold text-slate-800">
-                            {userCoords.isReal
-                              ? `${userCoords.lat?.toFixed(4)}°, ${userCoords.lng?.toFixed(4)}° (${userCoords.city})`
-                              : '30.7450° N, 76.7760° E (Sector 17)'}
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white border border-slate-200/90 shadow-xs text-[10px]">
+                        <div className="flex items-center space-x-2 text-slate-600 min-w-0">
+                          <MapPin className={`w-3.5 h-3.5 shrink-0 ${gpsStatus === 'GPS Acquired' ? 'text-blue-600 animate-pulse' : gpsStatus === 'Locating' ? 'text-amber-500 animate-spin' : 'text-rose-500'}`} />
+                          <span className="font-semibold text-slate-800 truncate">
+                            {gpsStatus === 'GPS Acquired' && userCoords.lat !== null
+                              ? `${userCoords.lat.toFixed(5)}° N, ${userCoords.lng.toFixed(5)}° E (${userCoords.sector || userCoords.address || 'Detected Location'})`
+                              : gpsStatus === 'Locating'
+                              ? 'Locating device GPS satellite coordinates...'
+                              : (gpsError || 'GPS Unavailable — Location permission required')}
                           </span>
                         </div>
-                        <span className="text-[#145547] font-mono font-bold">
-                          {userCoords.isReal ? `±${userCoords.accuracy}m GPS Fix` : 'Demo Sector'}
-                        </span>
+                        <div className="shrink-0 flex items-center space-x-1">
+                          {gpsStatus === 'GPS Acquired' ? (
+                            <span className="text-[#145547] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-mono font-bold">
+                              GPS Acquired (±{userCoords.accuracy}m)
+                            </span>
+                          ) : gpsStatus === 'Locating' ? (
+                            <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-bold animate-pulse">
+                              Locating...
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={startGpsWatcher}
+                              className="text-white bg-rose-600 hover:bg-rose-700 px-2 py-0.5 rounded font-bold transition-all shadow-xs"
+                            >
+                              Enable GPS
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Photo / Video Mode Selector */}
@@ -1347,13 +1546,13 @@ export default function UserMobileApp({
                   {/* Map Header Info */}
                   <div className="flex items-center justify-between text-xs bg-white border border-slate-200/90 rounded-xl px-3 py-2 shadow-xs">
                     <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className={`w-2.5 h-2.5 rounded-full ${gpsStatus === 'GPS Acquired' ? 'bg-emerald-500 animate-pulse' : gpsStatus === 'Locating' ? 'bg-amber-500 animate-spin' : 'bg-rose-500'}`} />
                       <span className="font-semibold text-slate-800">
-                        {userCoords.isReal ? `Live: ${userCoords.city}` : 'Smart City Map'}
+                        {gpsStatus === 'GPS Acquired' ? `Live: ${userCoords.sector || userCoords.address || 'Real Location'}` : gpsStatus === 'Locating' ? 'Acquiring GPS...' : 'GPS Unavailable'}
                       </span>
                     </div>
                     <span className="text-[11px] text-[#145547] font-mono font-bold">
-                      {userCoords.isReal ? `${userCoords.lat?.toFixed(4)}, ${userCoords.lng?.toFixed(4)}` : 'Chandigarh'}
+                      {gpsStatus === 'GPS Acquired' && userCoords.lat !== null ? `${userCoords.lat.toFixed(4)}°, ${userCoords.lng.toFixed(4)}°` : (gpsStatus === 'Locating' ? 'Locating...' : 'No Fix')}
                     </span>
                   </div>
 
@@ -1361,7 +1560,7 @@ export default function UserMobileApp({
                     <RoadMap
                       geojson={roadsGeoJson}
                       observations={observations}
-                      userLocation={userCoords}
+                      userLocation={gpsStatus === 'GPS Acquired' && userCoords.lat !== null ? userCoords : null}
                       height="100%"
                     />
                   </div>
@@ -1508,7 +1707,11 @@ export default function UserMobileApp({
                                 <b>GPS Snapped Road:</b> {r.matched_road_name || 'Chandigarh Urban Network'}
                               </p>
                               <p className="text-slate-600 font-mono">
-                                <b>Coordinates:</b> {r.location?.coordinates ? `${r.location.coordinates[1].toFixed(4)}°N, ${r.location.coordinates[0].toFixed(4)}°E` : `${r.latitude || 30.74}°N, ${r.longitude || 76.78}°E`}
+                                <b>Coordinates:</b> {r.location?.coordinates && r.location.coordinates.length >= 2
+                                  ? `${Number(r.location.coordinates[1]).toFixed(5)}°N, ${Number(r.location.coordinates[0]).toFixed(5)}°E`
+                                  : (r.latitude !== undefined && r.latitude !== null
+                                    ? `${Number(r.latitude).toFixed(5)}°N, ${Number(r.longitude).toFixed(5)}°E`
+                                    : 'Coordinates not recorded')}
                               </p>
                               {r.detections && r.detections.length > 0 && (
                                 <p className="text-[#145547] font-semibold">

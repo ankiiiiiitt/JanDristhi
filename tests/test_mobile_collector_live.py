@@ -315,3 +315,58 @@ def test_visibility_in_observations_and_sessions_apis():
     obs_data = obs_res.json()
     assert isinstance(obs_data["data"], list)
     assert any(o.get("sensor_source") == "PHONE_IMU_SMARTPHONE" for o in obs_data["data"])
+
+
+def test_citizen_real_gps_observation_upload():
+    """
+    Test 6: Validates that Citizen Field Inspection photo upload preserves exact real GPS coordinates
+    and never substitutes fake fallback values.
+    """
+    # 1. Create a synthetic road photo with pothole
+    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+    img_path = Path(tmp.name)
+    tmp.close()
+
+    try:
+        frame = np.full((480, 640, 3), 85, dtype=np.uint8)
+        noise = np.random.randint(-15, 15, (480, 640, 3), dtype=np.int16)
+        frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+        # Add road lane marking and pothole
+        cv2.line(frame, (60, 480), (300, 150), (210, 210, 210), 4)
+        cv2.ellipse(frame, (320, 260), (70, 45), 0, 0, 360, (25, 25, 25), -1)
+        cv2.imwrite(str(img_path), frame)
+
+        # Real test coordinates (e.g. 28.613939, 77.209021)
+        target_lat = 28.613939
+        target_lng = 77.209021
+        target_sector = "Kartavya Path / New Delhi"
+
+        with open(img_path, "rb") as f:
+            res = client.post(
+                "/api/v1/observations/upload",
+                data={
+                    "vehicle_id": "MOB-8822",
+                    "latitude": str(target_lat),
+                    "longitude": str(target_lng),
+                    "sector": target_sector,
+                    "captured_at": "2026-10-31T03:30:00Z"
+                },
+                files={"file": ("real_gps_field_photo.jpg", f, "image/jpeg")}
+            )
+
+        assert res.status_code == 201, res.text
+        data = res.json()
+        assert data["success"] is True
+        obs = data["data"]
+
+        # Strict coordinate validation - zero fake fallbacks
+        assert obs["latitude"] == target_lat
+        assert obs["longitude"] == target_lng
+        assert obs["location"]["type"] == "Point"
+        assert obs["location"]["coordinates"] == [target_lng, target_lat]
+        assert obs["sector"] == target_sector
+        assert obs["report_source"] == "citizen"
+        assert obs["vehicle_id"] == "MOB-8822"
+    finally:
+        img_path.unlink(missing_ok=True)
+

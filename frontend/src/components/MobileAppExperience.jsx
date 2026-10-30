@@ -104,10 +104,10 @@ export default function MobileAppExperience({
 
   // Real GPS Geolocation State
   const [userCoords, setUserCoords] = useState({
-    lat: 30.7450,
-    lng: 76.7760,
-    accuracy: 12,
-    city: 'Detecting Location...',
+    lat: null,
+    lng: null,
+    accuracy: null,
+    city: 'Locating...',
     isReal: false
   });
 
@@ -198,9 +198,12 @@ export default function MobileAppExperience({
       const blob = await imgRes.blob();
       formData.append('file', blob, 'road_hazard_recording.jpg');
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CTU-BUS-104');
-      const finalLat = userCoords.lat ? userCoords.lat.toFixed(5) : '30.7450';
-      const finalLng = userCoords.lng ? userCoords.lng.toFixed(5) : '76.7760';
-      const finalSector = userCoords.isReal ? (userCoords.city || 'My Location') : 'Sector 17';
+      if (!userCoords.lat || !userCoords.lng) {
+        throw new Error('Real GPS location required before submitting.');
+      }
+      const finalLat = userCoords.lat.toFixed(6);
+      const finalLng = userCoords.lng.toFixed(6);
+      const finalSector = userCoords.isReal ? (userCoords.city || 'My Location') : 'Field Location';
 
       formData.append('latitude', finalLat);
       formData.append('longitude', finalLng);
