@@ -68,7 +68,9 @@ export default function UserMobileApp({
   // Live Recording state
   const [recordMode, setRecordMode] = useState('video'); // 'video' | 'photo'
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(138); // 00:02:18
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingSaved, setRecordingSaved] = useState(false);
+  const [photoFlash, setPhotoFlash] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const userVideoRef = useRef(null);
 
@@ -80,14 +82,26 @@ export default function UserMobileApp({
   };
 
   const toggleRecording = async () => {
+    if (recordMode === 'photo') {
+      setPhotoFlash(true);
+      setTimeout(() => setPhotoFlash(false), 300);
+      return;
+    }
+
     if (isRecording) {
       if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
         setCameraStream(null);
       }
       setIsRecording(false);
+      setRecordingSaved(true);
       return;
     }
+
+    // Reset and start recording
+    setRecordingSeconds(0);
+    setRecordingSaved(false);
+    setIsRecording(true);
 
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -101,9 +115,8 @@ export default function UserMobileApp({
         }
       }
     } catch (e) {
-      console.warn("Camera access failed:", e);
+      console.warn("Camera access failed or unavailable in browser:", e);
     }
-    setIsRecording(true);
   };
 
   useEffect(() => {
@@ -119,7 +132,9 @@ export default function UserMobileApp({
         setRecordingSeconds(prev => prev + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isRecording]);
 
   const handleLogin = (e) => {
@@ -478,6 +493,9 @@ export default function UserMobileApp({
                   </div>
 
                   <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-black h-72 flex items-center justify-center shadow-2xl">
+                    {photoFlash && (
+                      <div className="absolute inset-0 bg-white/90 z-20 transition-opacity duration-300 pointer-events-none animate-ping" />
+                    )}
                     {cameraStream ? (
                       <video ref={userVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                     ) : (
@@ -498,16 +516,16 @@ export default function UserMobileApp({
                   <div className="flex items-center justify-center space-x-2 bg-slate-900 p-1 rounded-xl max-w-[200px] mx-auto border border-slate-800">
                     <button
                       onClick={() => setRecordMode('video')}
-                      className={`px-4 py-1 rounded-lg text-xs font-bold ${
-                        recordMode === 'video' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
+                      className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+                        recordMode === 'video' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       Video
                     </button>
                     <button
                       onClick={() => setRecordMode('photo')}
-                      className={`px-4 py-1 rounded-lg text-xs font-bold ${
-                        recordMode === 'photo' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
+                      className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+                        recordMode === 'photo' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       Photo
@@ -517,19 +535,43 @@ export default function UserMobileApp({
                   <div className="flex items-center justify-center py-2">
                     <button
                       onClick={toggleRecording}
-                      className="w-16 h-16 rounded-full border-4 border-slate-700 p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                      title={recordMode === 'video' ? (isRecording ? "Stop Recording" : "Start Recording") : "Capture Photo"}
+                      className={`w-16 h-16 rounded-full border-4 ${isRecording ? 'border-rose-500/50' : 'border-slate-700'} p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl`}
                     >
-                      <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600' : 'bg-red-500'} flex items-center justify-center shadow-lg`}>
-                        {isRecording ? <Square className="h-5 w-5 text-white" /> : <div className="w-6 h-6 rounded-full bg-white" />}
+                      <div className={`w-full h-full rounded-full ${isRecording ? 'bg-rose-600 animate-pulse' : 'bg-red-500'} flex items-center justify-center shadow-lg`}>
+                        {recordMode === 'video' ? (
+                          isRecording ? <Square className="h-5 w-5 text-white" /> : <div className="w-6 h-6 rounded-full bg-white" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-white" />
+                        )}
                       </div>
                     </button>
                   </div>
 
                   <div className="text-center text-xs">
-                    <span className="text-rose-400 font-bold flex items-center justify-center space-x-1.5">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                      <span>Recording... {formatTime(recordingSeconds)}</span>
-                    </span>
+                    {recordMode === 'video' ? (
+                      isRecording ? (
+                        <span className="text-rose-400 font-bold flex items-center justify-center space-x-1.5 animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          <span>Recording... {formatTime(recordingSeconds)}</span>
+                        </span>
+                      ) : recordingSaved && recordingSeconds > 0 ? (
+                        <span className="text-emerald-400 font-bold flex items-center justify-center space-x-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span>Saved ({formatTime(recordingSeconds)}) • Tap button to record again</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium flex items-center justify-center space-x-1.5">
+                          <span className="w-2 h-2 rounded-full bg-slate-500" />
+                          <span>Ready to Record • Tap button to start</span>
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-slate-300 font-medium flex items-center justify-center space-x-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span>Photo Mode • Tap shutter button to capture</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
