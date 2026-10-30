@@ -180,9 +180,14 @@ class MobileCollectorVideoProcessor:
 
         # Match road segment
         snap_res = snap_gps_to_road_segment(latitude, longitude, road_segments, max_threshold_meters=200.0)
-        seg_id = snap_res.get("segment_id") or "RS-CHD-SEC-17-001"
-        seg_name = snap_res.get("segment_name") or "Madhya Marg (Sector 17)"
-        sec_name = snap_res.get("sector") or sector or "Sector 17"
+        if snap_res.get("matched"):
+            seg_id = snap_res.get("segment_id")
+            seg_name = snap_res.get("segment_name")
+            sec_name = snap_res.get("sector") or sector or "Chandigarh"
+        else:
+            seg_id = None
+            seg_name = f"Road near ({latitude:.4f}, {longitude:.4f})"
+            sec_name = sector or "Chandigarh"
 
         created_obs_records: List[Dict[str, Any]] = []
         all_detections: List[Dict[str, Any]] = []
@@ -313,26 +318,27 @@ class MobileCollectorVideoProcessor:
 
         # 6. Update linked road segment condition
         hazards_count = len(all_detections)
-        if db_manager.is_connected and db_manager.db is not None:
-            await db_manager.db.road_segments.update_one(
-                {"segment_id": seg_id},
-                {
-                    "$set": {
-                        "health_score": ihs_result["health_score"],
-                        "status_category": ihs_result["risk_level"],
-                        "last_inspected_at": now_iso
-                    },
-                    "$inc": {"hazard_count": hazards_count}
-                }
-            )
-        else:
-            for s in mock_store.road_segments:
-                if s.get("segment_id") == seg_id:
-                    s["health_score"] = ihs_result["health_score"]
-                    s["status_category"] = ihs_result["risk_level"]
-                    s["hazard_count"] = s.get("hazard_count", 0) + hazards_count
-                    s["last_inspected_at"] = now_iso
-                    break
+        if seg_id:
+            if db_manager.is_connected and db_manager.db is not None:
+                await db_manager.db.road_segments.update_one(
+                    {"segment_id": seg_id},
+                    {
+                        "$set": {
+                            "health_score": ihs_result["health_score"],
+                            "status_category": ihs_result["risk_level"],
+                            "last_inspected_at": now_iso
+                        },
+                        "$inc": {"hazard_count": hazards_count}
+                    }
+                )
+            else:
+                for s in mock_store.road_segments:
+                    if s.get("segment_id") == seg_id:
+                        s["health_score"] = ihs_result["health_score"]
+                        s["status_category"] = ihs_result["risk_level"]
+                        s["hazard_count"] = s.get("hazard_count", 0) + hazards_count
+                        s["last_inspected_at"] = now_iso
+                        break
 
         # 7. Create inspection session summary record
         session_record = {
@@ -400,6 +406,7 @@ class MobileCollectorVideoProcessor:
 
         frames_with_times: List[Tuple[float, Path]] = []
 
+        # 1. Decode captured keyframes if provided
         if keyframes_payload:
             for idx, kf in enumerate(keyframes_payload):
                 t_ms = float(kf.get("video_time_ms", idx * 1500))
@@ -417,15 +424,23 @@ class MobileCollectorVideoProcessor:
                     except Exception as e:
                         logger.warning(f"Could not decode keyframe {idx}: {e}")
 
-        if not frames_with_times and video_path and video_path.exists():
-            frames_with_times = self.extract_frames_with_cv2(video_path, session_dir, interval_seconds=1.2)
-
-        if not frames_with_times:
-            sample_src = Path("backend/uploads/road_pothole_d00.jpg")
-            if sample_src.exists():
-                fallback_frame = session_dir / "frame_sample_01.jpg"
-                shutil.copyfile(sample_src, fallback_frame)
-                frames_with_times.append((1000.0, fallback_frame))
+        # 2. Extract frames from uploaded video if available
+        if video_path and video_path.exists():
+            is_valid, val_err, meta = validate_road_video(video_path, filename=video_path.name)
+            if not is_valid:
+                return {
+                    "success": False,
+                    "error": f"Road video validation failed: {val_err}",
+                    "status_code": 422
+                }
+            if not frames_with_times:
+                frames_with_times = self.extract_frames_with_cv2(video_path, session_dir, interval_seconds=1.2)
+                if not frames_with_times:
+                    return {
+                        "success": False,
+                        "error": "Could not extract valid video frames from the uploaded video.",
+                        "status_code": 422
+                    }
 
         if db_manager.is_connected and db_manager.db is not None:
             cursor = db_manager.db.road_segments.find({}, {"_id": 0})
@@ -436,72 +451,154 @@ class MobileCollectorVideoProcessor:
         created_obs_records: List[Dict[str, Any]] = []
         hazards_detected_count = 0
 
-        for frame_idx, (frame_time_ms, frame_path) in enumerate(frames_with_times):
-            matched_telem = {}
-            if telemetry_points:
-                matched_telem = min(
-                    telemetry_points,
-                    key=lambda pt: abs(float(pt.get("video_time_ms", 0)) - frame_time_ms)
-                )
-
-            lat = float(matched_telem.get("latitude") or 30.7408)
-            lng = float(matched_telem.get("longitude") or 76.7825)
-            alt = float(matched_telem.get("altitude") or 342.0)
-            speed = float(matched_telem.get("speed_kmph") or 34.0)
-            z_shock = float(matched_telem.get("calibrated_z_shock") or 2.65)
-            sensor_src = matched_telem.get("sensor_source", "PHONE_IMU_SMARTPHONE")
-
-            snap_res = snap_gps_to_road_segment(lat, lng, road_segments, max_threshold_meters=200.0)
-            seg_id = snap_res.get("segment_id") or "RS-CHD-SEC-17-001"
-            seg_name = snap_res.get("segment_name") or "Madhya Marg (Sector 17)"
-            sec_name = snap_res.get("sector") or "Sector 17"
-
-            annotated_filename = f"annotated_{frame_path.name}"
-            annotated_path = session_dir / annotated_filename
-            detections = ai_bridge.detect_road_damage(str(frame_path), str(annotated_path))
-
-            obs_id = f"OBS-MOB-{session_id[-6:]}-{frame_idx+1:02d}"
-            web_frame_url = f"/uploads/collector/{session_id}/{frame_path.name}"
-            web_annotated_url = f"/uploads/collector/{session_id}/{annotated_filename}"
-
-            obs_record = {
-                "observation_id": obs_id,
-                "session_id": session_id,
-                "vehicle_id": vehicle_id,
-                "location": {"type": "Point", "coordinates": [lng, lat]},
-                "altitude": alt,
-                "speed_kmph": speed,
-                "telemetry_z_shock": z_shock,
-                "sensor_source": sensor_src,
-                "is_calibrated_mount": matched_telem.get("is_calibrated", True),
-                "image_url": web_frame_url,
-                "annotated_image_url": web_annotated_url,
-                "detection_status": "processed",
-                "detections": detections,
-                "linked_segment_id": seg_id,
-                "matched_road_name": seg_name,
-                "sector": sec_name,
-                "captured_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
-                "created_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
-                "data_label": f"[MOBILE COLLECTOR - {sensor_src}]"
-            }
-
-            if db_manager.is_connected and db_manager.db is not None:
-                await db_manager.db.observations.insert_one(obs_record)
-                if detections:
-                    await db_manager.db.road_segments.update_one(
-                        {"segment_id": seg_id},
-                        {"$inc": {"hazard_count": len(detections)}}
+        if frames_with_times:
+            for frame_idx, (frame_time_ms, frame_path) in enumerate(frames_with_times):
+                matched_telem = {}
+                if telemetry_points:
+                    matched_telem = min(
+                        telemetry_points,
+                        key=lambda pt: abs(float(pt.get("video_time_ms", 0)) - frame_time_ms)
                     )
-            else:
-                mock_store.observations.insert(0, obs_record)
-                for s in mock_store.road_segments:
-                    if s.get("segment_id") == seg_id:
-                        s["hazard_count"] = s.get("hazard_count", 0) + len(detections)
-                        break
 
-            created_obs_records.append(obs_record)
-            hazards_detected_count += len(detections)
+                raw_lat = matched_telem.get("latitude")
+                raw_lng = matched_telem.get("longitude")
+                if raw_lat is None or raw_lng is None:
+                    first_with_coords = next((pt for pt in telemetry_points if pt.get("latitude") is not None), None)
+                    if first_with_coords:
+                        raw_lat = first_with_coords["latitude"]
+                        raw_lng = first_with_coords["longitude"]
+
+                if raw_lat is None or raw_lng is None:
+                    return {
+                        "success": False,
+                        "error": "Missing valid GPS telemetry coordinates for video frame analysis.",
+                        "status_code": 400
+                    }
+
+                lat = float(raw_lat)
+                lng = float(raw_lng)
+                alt = float(matched_telem.get("altitude") or 0.0)
+                speed = float(matched_telem.get("speed_kmph") or 0.0)
+                z_shock = float(matched_telem.get("calibrated_z_shock") or 0.0)
+                sensor_src = matched_telem.get("sensor_source", "PHONE_IMU_SMARTPHONE")
+
+                snap_res = snap_gps_to_road_segment(lat, lng, road_segments, max_threshold_meters=200.0)
+                if snap_res.get("matched"):
+                    seg_id = snap_res.get("segment_id")
+                    seg_name = snap_res.get("segment_name")
+                    sec_name = snap_res.get("sector") or "Chandigarh"
+                else:
+                    seg_id = None
+                    seg_name = f"Road near ({lat:.4f}, {lng:.4f})"
+                    sec_name = snap_res.get("sector") or "Unmapped Roadway"
+
+                annotated_filename = f"annotated_{frame_path.name}"
+                annotated_path = session_dir / annotated_filename
+                detections = ai_bridge.detect_road_damage(str(frame_path), str(annotated_path))
+
+                obs_id = f"OBS-MOB-{session_id[-6:]}-{frame_idx+1:02d}"
+                web_frame_url = f"/uploads/collector/{session_id}/{frame_path.name}"
+                web_annotated_url = f"/uploads/collector/{session_id}/{annotated_filename}"
+
+                obs_record = {
+                    "observation_id": obs_id,
+                    "session_id": session_id,
+                    "vehicle_id": vehicle_id,
+                    "location": {"type": "Point", "coordinates": [lng, lat]},
+                    "altitude": alt,
+                    "speed_kmph": speed,
+                    "telemetry_z_shock": z_shock,
+                    "sensor_source": sensor_src,
+                    "is_calibrated_mount": matched_telem.get("is_calibrated", True),
+                    "image_url": web_frame_url,
+                    "annotated_image_url": web_annotated_url,
+                    "detection_status": "processed",
+                    "detections": detections,
+                    "linked_segment_id": seg_id,
+                    "matched_road_name": seg_name,
+                    "sector": sec_name,
+                    "captured_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                    "created_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                    "data_label": f"[MOBILE COLLECTOR - {sensor_src}]"
+                }
+
+                if db_manager.is_connected and db_manager.db is not None:
+                    await db_manager.db.observations.insert_one(obs_record)
+                    if detections and seg_id:
+                        await db_manager.db.road_segments.update_one(
+                            {"segment_id": seg_id},
+                            {"$inc": {"hazard_count": len(detections)}}
+                        )
+                else:
+                    mock_store.observations.insert(0, obs_record)
+                    if detections and seg_id:
+                        for s in mock_store.road_segments:
+                            if s.get("segment_id") == seg_id:
+                                s["hazard_count"] = s.get("hazard_count", 0) + len(detections)
+                                break
+
+                created_obs_records.append(obs_record)
+                hazards_detected_count += len(detections)
+
+        elif telemetry_points:
+            # Telemetry-only bump logging session (no video frames)
+            for pt_idx, telem in enumerate(telemetry_points[:20]):
+                raw_lat = telem.get("latitude")
+                raw_lng = telem.get("longitude")
+                if raw_lat is None or raw_lng is None:
+                    continue
+                lat = float(raw_lat)
+                lng = float(raw_lng)
+                alt = float(telem.get("altitude") or 0.0)
+                speed = float(telem.get("speed_kmph") or 0.0)
+                z_shock = float(telem.get("calibrated_z_shock") or 0.0)
+                sensor_src = telem.get("sensor_source", "PHONE_IMU_SMARTPHONE")
+
+                snap_res = snap_gps_to_road_segment(lat, lng, road_segments, max_threshold_meters=200.0)
+                if snap_res.get("matched"):
+                    seg_id = snap_res.get("segment_id")
+                    seg_name = snap_res.get("segment_name")
+                    sec_name = snap_res.get("sector") or "Chandigarh"
+                else:
+                    seg_id = None
+                    seg_name = f"Road near ({lat:.4f}, {lng:.4f})"
+                    sec_name = snap_res.get("sector") or "Unmapped Roadway"
+
+                obs_id = f"OBS-MOB-IMU-{session_id[-6:]}-{pt_idx+1:02d}"
+                obs_record = {
+                    "observation_id": obs_id,
+                    "session_id": session_id,
+                    "vehicle_id": vehicle_id,
+                    "location": {"type": "Point", "coordinates": [lng, lat]},
+                    "altitude": alt,
+                    "speed_kmph": speed,
+                    "telemetry_z_shock": z_shock,
+                    "sensor_source": sensor_src,
+                    "is_calibrated_mount": telem.get("is_calibrated", True),
+                    "image_url": None,
+                    "annotated_image_url": None,
+                    "detection_status": "processed",
+                    "detections": [],
+                    "linked_segment_id": seg_id,
+                    "matched_road_name": seg_name,
+                    "sector": sec_name,
+                    "captured_at": telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                    "created_at": telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                    "data_label": f"[MOBILE COLLECTOR IMU - {sensor_src}]"
+                }
+
+                if db_manager.is_connected and db_manager.db is not None:
+                    await db_manager.db.observations.insert_one(obs_record)
+                else:
+                    mock_store.observations.insert(0, obs_record)
+
+                created_obs_records.append(obs_record)
+        else:
+            return {
+                "success": False,
+                "error": "No video frames, keyframes, or telemetry points provided for session.",
+                "status_code": 400
+            }
 
         max_shock = 0.0
         if telemetry_points:
@@ -517,7 +614,7 @@ class MobileCollectorVideoProcessor:
             "frames_processed": len(frames_with_times),
             "hazards_detected": hazards_detected_count,
             "created_observations": [o["observation_id"] for o in created_obs_records],
-            "max_vertical_shock": max_shock,
+            "max_vertical_shock": round(max_shock, 2),
             "sensor_source": "PHONE_IMU_SMARTPHONE",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -534,7 +631,7 @@ class MobileCollectorVideoProcessor:
             "session_id": session_id,
             "frames_processed": len(frames_with_times),
             "hazards_detected": hazards_detected_count,
-            "max_vertical_shock": max_shock,
+            "max_vertical_shock": round(max_shock, 2),
             "observations": created_obs_records,
             "session_summary": session_record
         }

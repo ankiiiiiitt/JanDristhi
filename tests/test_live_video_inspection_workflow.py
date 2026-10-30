@@ -345,3 +345,4 @@ def test_reject_unrelated_video_upload():
         assert "could not be validated as road surface inspection footage" in res.json()["detail"]
     finally:
         blank_vid.unlink(missing_ok=True)
+

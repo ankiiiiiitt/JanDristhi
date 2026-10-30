@@ -38,19 +38,19 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
 
   // Live Readings
   const [liveGps, setLiveGps] = useState({
-    latitude: 30.7408,
-    longitude: 76.7825,
-    altitude: 345.0,
-    accuracy: 4.2,
+    latitude: null,
+    longitude: null,
+    altitude: null,
+    accuracy: null,
     speed: 0.0,
     heading: 0.0,
     active: false
   });
 
   const [liveAccel, setLiveAccel] = useState({
-    x: 0.0,
-    y: 9.8,
-    z: 0.0,
+    x: null,
+    y: null,
+    z: null,
     calibrated_z_shock: 0.0,
     dynamic_mag: 0.0,
     active: false
@@ -693,10 +693,18 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
               </b>
             </div>
             <div className="text-[11px] text-slate-700">
-              GPS: <b className="text-[#145547] font-bold">{liveGps.latitude.toFixed(5)}, {liveGps.longitude.toFixed(5)}</b>
+              GPS: {liveGps.active && liveGps.latitude !== null ? (
+                <b className="text-[#145547] font-bold">{liveGps.latitude.toFixed(5)}, {liveGps.longitude.toFixed(5)}</b>
+              ) : (
+                <span className="text-amber-600 font-medium">Acquiring GPS fix...</span>
+              )}
             </div>
             <div className="text-[11px] text-slate-500">
-              Accuracy: <b className="text-slate-800">±{liveGps.accuracy}m</b> | Speed: <b className="text-blue-600 font-bold">{liveGps.speed} km/h</b>
+              {liveGps.active ? (
+                <>Accuracy: <b className="text-slate-800">±{liveGps.accuracy}m</b> | Speed: <b className="text-blue-600 font-bold">{liveGps.speed} km/h</b></>
+              ) : (
+                <span>High-accuracy GPS standby</span>
+              )}
             </div>
             <div className="text-[11px] text-slate-500">
               Calibrated Shock: <b className={`${liveAccel.calibrated_z_shock > 2.5 ? 'text-rose-600 font-bold' : 'text-amber-600 font-bold'}`}>
@@ -716,7 +724,11 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Raw Triaxial (X/Y/Z)</span>
             <div className="font-mono text-xs text-slate-800 mt-1">
-              X: <b className="text-blue-600">{liveAccel.x}</b> | Y: <b className="text-[#145547]">{liveAccel.y}</b> | Z: <b className="text-purple-600">{liveAccel.z}</b>
+              {liveAccel.active && liveAccel.x !== null ? (
+                <>X: <b className="text-blue-600">{liveAccel.x}</b> | Y: <b className="text-[#145547]">{liveAccel.y}</b> | Z: <b className="text-purple-600">{liveAccel.z}</b></>
+              ) : (
+                <span className="text-slate-400">Sensor Standby</span>
+              )}
             </div>
             <span className="text-[10px] text-slate-400">Units: m/s²</span>
           </div>
@@ -736,7 +748,7 @@ export default function MobileCollector({ onUploadSuccess, onRefresh }) {
             <div className="font-mono text-xs text-slate-800 mt-1">
               β: <b className="text-slate-900">{liveOrientation.beta}°</b> | γ: <b className="text-slate-900">{liveOrientation.gamma}°</b>
             </div>
-            <span className="text-[10px] text-slate-400">Heading: {liveGps.heading}°</span>
+            <span className="text-[10px] text-slate-400">Heading: {liveGps.active && liveGps.heading !== null ? `${liveGps.heading}°` : 'Standby'}</span>
           </div>
 
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">

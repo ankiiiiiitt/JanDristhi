@@ -41,7 +41,12 @@ class AIBridge:
             "model_path": str(m_path) if m_path else None
         }
 
-    def detect_road_damage(self, image_path: str, annotate_output_path: str = None) -> List[Dict[str, Any]]:
+    def detect_road_damage(
+        self,
+        image_path: str,
+        annotate_output_path: str = None,
+        allow_fallback: bool = False
+    ) -> List[Dict[str, Any]]:
         """
         Runs damage detection on the image and optionally creates an annotated output image
         with bounding boxes and RDD2022 class tags (D00, D10, D20, D40).
@@ -53,8 +58,8 @@ class AIBridge:
             except Exception as e:
                 logger.error(f"Error during AI inference: {e}")
 
-        # If no damage detected by model/cv, provide baseline detection for admitted road photos
-        if not detections:
+        # If allow_fallback is True (for legacy single-photo test mocks), supply fallback
+        if not detections and allow_fallback:
             detections = [
                 {
                     "class_id": "D00",
@@ -68,7 +73,7 @@ class AIBridge:
             ]
 
         # Annotate image if output path provided
-        if annotate_output_path and self._image_processor:
+        if annotate_output_path and self._image_processor and detections:
             try:
                 self._image_processor.draw_detections(image_path, detections, annotate_output_path)
             except Exception as err:

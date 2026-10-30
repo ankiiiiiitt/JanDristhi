@@ -61,6 +61,7 @@ export default function UnifiedAppView({
   repairs,
   onRefresh,
   onOpenUpload,
+  onUploadSuccess = null,
   currentUser = null,
   onLogout = null
 }) {
@@ -135,8 +136,8 @@ export default function UnifiedAppView({
 
   // Live Hardware Monitoring in Mockup Widget
   const [isMockupLive, setIsMockupLive] = useState(false);
-  const [mockupGps, setMockupGps] = useState({ lat: 30.7408, lng: 76.7827, speed: 28 });
-  const [mockupAccel, setMockupAccel] = useState({ x: 2.1, y: 1.3, z: 0.8 });
+  const [mockupGps, setMockupGps] = useState({ lat: null, lng: null, speed: 0 });
+  const [mockupAccel, setMockupAccel] = useState({ x: null, y: null, z: null });
   const [mockupStream, setMockupStream] = useState(null);
   const mockupVideoRef = useRef(null);
 
@@ -175,7 +176,7 @@ export default function UnifiedAppView({
           setMockupGps({
             lat: Number(pos.coords.latitude.toFixed(4)),
             lng: Number(pos.coords.longitude.toFixed(4)),
-            speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 28
+            speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
           });
         },
         (err) => console.warn("GPS lookup:", err),
@@ -717,7 +718,7 @@ export default function UnifiedAppView({
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    <span>{isMockupLive ? 'Live Sensors' : 'Demo Stream'}</span>
+                    <span>{isMockupLive ? 'Live Device Sensors' : 'Standby Preview'}</span>
                   </span>
                 </div>
 
@@ -733,21 +734,20 @@ export default function UnifiedAppView({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <img
-                        src="/images/roads/road_pothole_d00.jpg"
-                        alt="Road Camera Feed"
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="flex flex-col items-center justify-center p-4 text-center space-y-1.5">
+                        <Camera className="h-7 w-7 text-slate-500" />
+                        <p className="text-xs font-semibold text-slate-300">Camera Feed Inactive</p>
+                        <p className="text-[10px] text-slate-500">Tap below to test rear camera and GPS sensors</p>
+                      </div>
                     )}
 
-                    {/* Overlay Bounding Box */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="border-2 border-rose-500 bg-rose-500/20 w-28 h-16 rounded flex flex-col justify-between p-1">
-                        <span className="text-[9px] font-black bg-rose-600 text-white px-1 rounded w-max shadow">
-                          Pothole 0.87
-                        </span>
+                    {/* Live Status Pill */}
+                    {isMockupLive && (
+                      <div className="absolute top-2 left-2 bg-black/70 backdrop-blur px-2 py-0.5 rounded text-[10px] text-emerald-400 font-mono flex items-center space-x-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>LIVE HARDWARE SENSORS</span>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Real-time Telemetry Sensor Grid */}
@@ -760,7 +760,7 @@ export default function UnifiedAppView({
                       <div>
                         <p className="text-[9px] font-semibold text-slate-400">Camera</p>
                         <p className="text-[10px] font-bold text-[#145547]">
-                          {isMockupLive ? 'Rear Active' : 'Simulated'}
+                          {isMockupLive ? 'Rear Active' : 'Standby'}
                         </p>
                       </div>
                     </div>
@@ -773,7 +773,7 @@ export default function UnifiedAppView({
                       <div>
                         <p className="text-[9px] font-semibold text-slate-400">GPS</p>
                         <p className="text-[9px] font-mono font-bold text-slate-700">
-                          {mockupGps.lat}, {mockupGps.lng}
+                          {mockupGps.lat !== null ? `${mockupGps.lat}, ${mockupGps.lng}` : 'Waiting for GPS'}
                         </p>
                       </div>
                     </div>
@@ -786,7 +786,7 @@ export default function UnifiedAppView({
                       <div>
                         <p className="text-[9px] font-semibold text-slate-400">IMU / Z-Shock</p>
                         <p className="text-[9px] font-mono font-bold text-slate-700">
-                          X:{mockupAccel.x} Y:{mockupAccel.y} Z:{mockupAccel.z}
+                          {mockupAccel.x !== null ? `X:${mockupAccel.x} Y:${mockupAccel.y} Z:${mockupAccel.z}` : 'Waiting for IMU'}
                         </p>
                       </div>
                     </div>
@@ -804,16 +804,25 @@ export default function UnifiedAppView({
                   </div>
 
                   {/* Toggle Monitoring Action Button */}
-                  <button
-                    onClick={toggleMockupSensors}
-                    className={`mt-2 w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md active:scale-98 ${
-                      isMockupLive
-                        ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
-                        : 'bg-[#145547] hover:bg-[#0d4339] text-white shadow-emerald-950/15'
-                    }`}
-                  >
-                    <span>{isMockupLive ? 'Turn Off Camera & Sensors' : 'Turn On Live Hardware Sensors'}</span>
-                  </button>
+                  <div className="mt-2 space-y-1.5">
+                    <button
+                      onClick={toggleMockupSensors}
+                      className={`w-full py-2 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm active:scale-98 ${
+                        isMockupLive
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <span>{isMockupLive ? 'Stop Sensor Test' : 'Test Phone Sensors'}</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveNav('live')}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all bg-[#145547] hover:bg-[#0d4339] text-white shadow-md shadow-emerald-950/15"
+                    >
+                      <Radio className="h-3.5 w-3.5" />
+                      <span>Launch Full Mobile Collector</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Mobile Bottom Navigation Bar */}
@@ -866,7 +875,10 @@ export default function UnifiedAppView({
             {/* Embedded Full Sensor Module */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-2 sm:p-5 shadow-xs">
               <MobileCollector
-                onUploadSuccess={onRefresh}
+                onUploadSuccess={(obs) => {
+                  if (onUploadSuccess) onUploadSuccess(obs);
+                  if (onRefresh) onRefresh();
+                }}
                 onRefresh={onRefresh}
               />
             </div>

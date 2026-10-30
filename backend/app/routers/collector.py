@@ -98,5 +98,13 @@ async def upload_collector_session(
         base_upload_dir=COLLECTOR_UPLOAD_DIR
     )
 
+    if not result.get("success", False):
+        if saved_video_path and saved_video_path.exists():
+            saved_video_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=result.get("status_code", 422),
+            detail=result.get("error", "Failed to process mobile collector session.")
+        )
+
     return result
 

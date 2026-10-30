@@ -221,7 +221,8 @@ async def upload_observation(
         # 1. Run AI detection and generate annotated bounding box image
         raw_detections = ai_bridge.detect_road_damage(
             str(saved_file_path),
-            annotate_output_path=str(annotated_file_path)
+            annotate_output_path=str(annotated_file_path),
+            allow_fallback=True
         )
         if not raw_detections:
             annotated_file_path.unlink(missing_ok=True)

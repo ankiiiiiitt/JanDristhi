@@ -234,6 +234,7 @@ export default function App() {
           repairs={repairs}
           onRefresh={loadAllData}
           onOpenUpload={() => setIsModalOpen(true)}
+          onUploadSuccess={handleUploadSuccess}
           currentUser={currentUser}
           onLogout={handleLogout}
         />
