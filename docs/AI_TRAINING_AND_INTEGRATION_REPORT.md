@@ -118,3 +118,4 @@ Because dashcam and phone sensors record bursts of sequential frames of the same
    - Verified: Reports `"ai_engine": "online"`, dynamically detects checkpoint status (`best_road_damage.pt`), and indicates database readiness.
 4. **Full Regression Test Suite**:
    - **19 passed unit & integration tests** in `0.26s`.
+

@@ -42,5 +42,8 @@ class ObservationModel(BaseModel):
     detection_status: DetectionStatus = DetectionStatus.PENDING
     detections: List[DetectionItem] = []
     linked_segment_id: Optional[str] = None
+    matched_road_name: Optional[str] = None
+    sector: Optional[str] = None
     captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

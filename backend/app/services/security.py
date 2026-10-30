@@ -24,3 +24,4 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception as e:
         logger.warning(f"Bcrypt verification error: {e}")
         return False
+

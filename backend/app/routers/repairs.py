@@ -14,13 +14,30 @@ UPLOAD_DIR = Path(settings.UPLOAD_STORAGE_DIR)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("")
-async def list_repairs():
-    """Returns active repair records, work orders, and audit statuses."""
+async def list_repairs(
+    status: Optional[str] = None,
+    sector: Optional[str] = None,
+    limit: int = 100
+):
+    """
+    Returns active repair records, work orders, and audit statuses.
+    Optimized with compound indexes on (status, created_at) and (sector, created_at).
+    """
     if db_manager.is_connected and db_manager.db is not None:
-        cursor = db_manager.db.repair_records.find({}, {"_id": 0}).sort("created_at", -1)
-        records = await cursor.to_list(length=100)
+        query = {}
+        if status:
+            query["status"] = status
+        if sector:
+            query["sector"] = sector
+        cursor = db_manager.db.repair_records.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
+        records = await cursor.to_list(length=limit)
     else:
         records = mock_store.repair_records
+        if status:
+            records = [r for r in records if r.get("status") == status]
+        if sector:
+            records = [r for r in records if r.get("sector") == sector]
+        records = sorted(records, key=lambda r: r.get("created_at", ""), reverse=True)[:limit]
 
     return {
         "success": True,

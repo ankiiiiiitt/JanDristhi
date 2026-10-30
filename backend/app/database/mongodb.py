@@ -7,6 +7,52 @@ from app.services.mock_store import mock_store
 
 logger = logging.getLogger("jandrishti.db")
 
+# Declarative index specifications for optimal query performance
+INDEX_SPECIFICATIONS = {
+    "users": [
+        ("user_id", {"unique": True}),
+        ("email", {"unique": True}),
+    ],
+    "vehicles": [
+        ("vehicle_id", {"unique": True}),
+        ([("last_known_location", "2dsphere")], {}),
+    ],
+    "observations": [
+        ("observation_id", {"unique": True}),
+        ([("location", "2dsphere")], {}),
+        ("linked_segment_id", {}),
+        # Sector, severity, and detection status composite indexes with created_at
+        ([("sector", 1), ("created_at", -1)], {"name": "idx_obs_sector_created_at"}),
+        ([("detections.severity", 1), ("created_at", -1)], {"name": "idx_obs_severity_created_at"}),
+        ([("detection_status", 1), ("created_at", -1)], {"name": "idx_obs_status_created_at"}),
+        ([("sector", 1), ("detection_status", 1), ("created_at", -1)], {"name": "idx_obs_sector_status_created_at"}),
+        ([("created_at", -1)], {"name": "idx_obs_created_at"}),
+        # Backwards compatibility indexes with captured_at
+        ([("sector", 1), ("captured_at", -1)], {"name": "idx_obs_sector_captured_at"}),
+        ([("detection_status", 1), ("captured_at", -1)], {"name": "idx_obs_status_captured_at"}),
+        ([("captured_at", -1)], {"name": "idx_obs_captured_at"}),
+    ],
+    "road_segments": [
+        ("segment_id", {"unique": True}),
+        ([("geometry", "2dsphere")], {}),
+        ([("ward_id", 1), ("health_score", 1)], {"name": "idx_roads_ward_health"}),
+        ([("area_name", 1)], {"name": "idx_roads_area_name"}),
+    ],
+    "risk_assessments": [
+        ("assessment_id", {"unique": True}),
+        ("segment_id", {}),
+        ([("sector", 1), ("health_score", 1)], {"name": "idx_risk_sector_health"}),
+        ([("risk_level", 1), ("assessed_at", -1)], {"name": "idx_risk_level_assessed_at"}),
+    ],
+    "repair_records": [
+        ("repair_id", {"unique": True}),
+        ("segment_id", {}),
+        ([("status", 1), ("created_at", -1)], {"name": "idx_repairs_status_created_at"}),
+        ([("sector", 1), ("created_at", -1)], {"name": "idx_repairs_sector_created_at"}),
+        ([("created_at", -1)], {"name": "idx_repairs_created_at"}),
+    ],
+}
+
 class MongoDBManager:
     client: Optional[AsyncIOMotorClient] = None
     db: Optional[AsyncIOMotorDatabase] = None
@@ -46,38 +92,23 @@ class MongoDBManager:
             self.client.close()
             logger.info("MongoDB connection closed.")
 
-    async def _ensure_indexes(self):
-        """Creates 2dsphere and unique indexes required by Developer 4."""
-        if not self.is_connected or not self.db:
-            return
+    async def _ensure_indexes(self, target_db=None):
+        """Creates compound, 2dsphere, and unique indexes across all collections."""
+        db = target_db if target_db is not None else self.db
+        if db is None:
+            return []
+        created_indexes = []
         try:
-            # Users collection
-            await self.db.users.create_index("user_id", unique=True)
-            await self.db.users.create_index("email", unique=True)
-
-            # Vehicles collection
-            await self.db.vehicles.create_index("vehicle_id", unique=True)
-            await self.db.vehicles.create_index([("last_known_location", "2dsphere")])
-
-            # Observations collection
-            await self.db.observations.create_index("observation_id", unique=True)
-            await self.db.observations.create_index([("location", "2dsphere")])
-            await self.db.observations.create_index("linked_segment_id")
-
-            # Road segments
-            await self.db.road_segments.create_index("segment_id", unique=True)
-            await self.db.road_segments.create_index([("geometry", "2dsphere")])
-
-            # Risk assessments
-            await self.db.risk_assessments.create_index("assessment_id", unique=True)
-            await self.db.risk_assessments.create_index("segment_id")
-
-            # Repair records
-            await self.db.repair_records.create_index("repair_id", unique=True)
-            await self.db.repair_records.create_index("segment_id")
-            logger.info("Database indexes successfully verified/created.")
+            for collection_name, index_list in INDEX_SPECIFICATIONS.items():
+                col = db[collection_name]
+                for key_or_keys, kwargs in index_list:
+                    idx_name = await col.create_index(key_or_keys, **kwargs)
+                    created_indexes.append((collection_name, idx_name))
+            logger.info("Database indexes successfully verified/created (%d indexes).", len(created_indexes))
+            return created_indexes
         except Exception as e:
             logger.error(f"Error ensuring indexes: {e}")
+            return created_indexes
 
     def get_collection(self, collection_name: str):
         if self.is_connected and self.db is not None:

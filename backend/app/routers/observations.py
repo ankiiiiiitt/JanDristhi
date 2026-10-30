@@ -80,6 +80,7 @@ async def upload_observation(
         matched_sector = snap_result.get("sector") or "Sector 17"
         snapping_distance = snap_result.get("distance_meters")
 
+        now_iso = datetime.now(timezone.utc).isoformat()
         # 3. Create observation record
         observation_record = {
             "observation_id": obs_id,
@@ -96,7 +97,8 @@ async def upload_observation(
             "matched_road_name": matched_road_name,
             "sector": matched_sector,
             "snapping_distance_meters": snapping_distance,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": now_iso,
+            "created_at": now_iso,
             "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
         }
 
@@ -126,14 +128,61 @@ async def upload_observation(
         )
 
 @router.get("")
-async def list_observations(limit: int = 50, ward_id: Optional[str] = None):
-    """Lists recent road observations and damage detections in Chandigarh."""
+async def list_observations(
+    limit: int = 50,
+    ward_id: Optional[str] = None,
+    sector: Optional[str] = None,
+    severity: Optional[str] = None,
+    detection_status: Optional[str] = None,
+    sort_by: str = "created_at"
+):
+    """
+    Lists recent road observations and damage detections in Chandigarh.
+    Leverages compound indexes:
+      - (sector, created_at)
+      - (detections.severity, created_at)
+      - (detection_status, created_at)
+      - (sector, detection_status, created_at)
+    """
     if db_manager.is_connected and db_manager.db is not None:
-        query = {"ward_id": ward_id} if ward_id else {}
-        cursor = db_manager.db.observations.find(query, {"_id": 0}).sort("captured_at", -1).limit(limit)
+        query = {}
+        if ward_id:
+            query["ward_id"] = ward_id
+        if sector:
+            query["sector"] = sector
+        if detection_status:
+            query["detection_status"] = detection_status
+        if severity:
+            query["detections.severity"] = severity.lower()
+
+        # Sort field alignment for compound indexes
+        sort_field = "captured_at" if sort_by == "captured_at" else "created_at"
+        cursor = db_manager.db.observations.find(query, {"_id": 0}).sort(sort_field, -1).limit(limit)
         results = await cursor.to_list(length=limit)
     else:
-        results = mock_store.observations[:limit]
+        results = mock_store.observations
+        if ward_id:
+            results = [o for o in results if o.get("ward_id") == ward_id]
+        if sector:
+            results = [o for o in results if o.get("sector") == sector]
+        if detection_status:
+            results = [o for o in results if o.get("detection_status") == detection_status]
+        if severity:
+            sev_lower = severity.lower()
+            results = [
+                o for o in results
+                if any(str(d.get("severity", "")).lower() == sev_lower for d in o.get("detections", []))
+            ]
+        # Sort descending by created_at or captured_at
+        results = sorted(
+            results,
+            key=lambda o: o.get("created_at") or o.get("captured_at") or "",
+            reverse=True
+        )[:limit]
+
+    for item in results:
+        if "created_at" not in item:
+            item["created_at"] = item.get("captured_at")
 
     return {
         "success": True,

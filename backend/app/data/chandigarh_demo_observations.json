@@ -5,8 +5,8 @@
     "location": {
       "type": "Point",
       "coordinates": [
-        76.8040,
-        30.7060
+        76.804,
+        30.706
       ]
     },
     "altitude": 321.4,
@@ -32,7 +32,8 @@
     "linked_segment_id": "RS-CHD-IND-PH1-019",
     "sector": "Industrial Area Phase 1",
     "captured_at": "2026-10-30T05:30:37.134544+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
+    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
+    "created_at": "2026-10-30T05:30:37.134544+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-002",
@@ -40,7 +41,7 @@
     "location": {
       "type": "Point",
       "coordinates": [
-        76.7720,
+        76.772,
         30.7305
       ]
     },
@@ -67,7 +68,8 @@
     "linked_segment_id": "RS-CHD-SEC-22-011",
     "sector": "Sector 22",
     "captured_at": "2026-10-30T05:45:37.134550+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
+    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
+    "created_at": "2026-10-30T05:45:37.134550+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-003",
@@ -102,7 +104,8 @@
     "linked_segment_id": "RS-CHD-SEC-17-005",
     "sector": "Sector 17",
     "captured_at": "2026-10-30T06:00:37.134553+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
+    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
+    "created_at": "2026-10-30T06:00:37.134553+00:00"
   },
   {
     "observation_id": "OBS-CHD-2026-004",
@@ -137,6 +140,7 @@
     "linked_segment_id": "RS-CHD-SEC-34-017",
     "sector": "Sector 34",
     "captured_at": "2026-10-30T06:10:37.134555+00:00",
-    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
+    "data_label": "[DEMO DATA - SIMULATED OBSERVATION]",
+    "created_at": "2026-10-30T06:10:37.134555+00:00"
   }
 ]

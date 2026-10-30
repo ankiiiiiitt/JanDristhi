@@ -166,3 +166,4 @@ async def download_pdf_report(filename: str):
         media_type="application/pdf",
         filename=filename
     )
+

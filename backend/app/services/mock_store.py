@@ -201,6 +201,9 @@ class MockDataStore:
                     with open(p, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         if data:
+                            for item in data:
+                                if "created_at" not in item:
+                                    item["created_at"] = item.get("captured_at") or datetime.now(timezone.utc).isoformat()
                             return data
                 except Exception:
                     pass

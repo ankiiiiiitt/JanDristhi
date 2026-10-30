@@ -218,6 +218,7 @@ class MobileCollectorVideoProcessor:
                 "matched_road_name": seg_name,
                 "sector": sec_name,
                 "captured_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                "created_at": matched_telem.get("timestamp") or datetime.now(timezone.utc).isoformat(),
                 "data_label": f"[MOBILE COLLECTOR - {sensor_src}]"
             }
 
