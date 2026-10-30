@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   Radio,
@@ -35,9 +35,17 @@ import {
   Eye,
   Crosshair,
   Sliders,
-  ChevronLeft
+  ChevronLeft,
+  Menu,
+  X,
+  Smartphone,
+  Video,
+  UploadCloud,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import RoadMap from './RoadMap';
+import MobileCollector from './MobileCollector';
 
 export default function UnifiedAppView({
   overview,
@@ -47,24 +55,100 @@ export default function UnifiedAppView({
   onRefresh,
   onOpenUpload
 }) {
-  const [activeNav, setActiveNav] = useState('dashboard'); // 'dashboard', 'live', 'detection', 'gis', 'analysis', 'repair', 'reports', 'vehicles', 'settings'
-  const [filterType, setFilterType] = useState('all'); // 'all', 'potholes', 'cracks', 'waterlogging'
+  const [activeNav, setActiveNav] = useState('dashboard');
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [filterType, setFilterType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(null);
 
   // AI Detection tab states
-  const [aiSubTab, setAiSubTab] = useState('image'); // 'image' | 'video'
+  const [aiSubTab, setAiSubTab] = useState('image');
   const [activeDetectionImg, setActiveDetectionImg] = useState('/images/roads/road_pothole_d00.jpg');
 
-  // Mobile Collector Simulation states
-  const [isMobileRecording, setIsMobileRecording] = useState(true);
-  const [mobileTab, setMobileTab] = useState('home'); // 'home', 'detections', 'map', 'upload'
-  const [mobileTimer, setMobileTimer] = useState('00:02:18');
+  // Live Hardware Monitoring in Mockup Widget
+  const [isMockupLive, setIsMockupLive] = useState(false);
+  const [mockupGps, setMockupGps] = useState({ lat: 30.7408, lng: 76.7827, speed: 28 });
+  const [mockupAccel, setMockupAccel] = useState({ x: 2.1, y: 1.3, z: 0.8 });
+  const [mockupStream, setMockupStream] = useState(null);
+  const mockupVideoRef = useRef(null);
 
-  // Repair verification slider state
-  const [sliderPosition, setSliderPosition] = useState(50);
+  // Start real browser sensors & camera for widget
+  const toggleMockupSensors = async () => {
+    if (isMockupLive) {
+      // Turn off
+      if (mockupStream) {
+        mockupStream.getTracks().forEach(track => track.stop());
+        setMockupStream(null);
+      }
+      setIsMockupLive(false);
+      return;
+    }
 
-  // High risk locations list for the dashboard right panel
+    // Turn ON Camera
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        setMockupStream(stream);
+        if (mockupVideoRef.current) {
+          mockupVideoRef.current.srcObject = stream;
+        }
+      }
+    } catch (e) {
+      console.warn("Camera permission or stream failed:", e);
+    }
+
+    // Turn ON Geolocation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setMockupGps({
+            lat: Number(pos.coords.latitude.toFixed(4)),
+            lng: Number(pos.coords.longitude.toFixed(4)),
+            speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 28
+          });
+        },
+        (err) => console.warn("GPS lookup:", err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+
+    // Turn ON Accelerometer
+    if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
+      const handleMotion = (e) => {
+        const acc = e.accelerationIncludingGravity || e.acceleration;
+        if (acc) {
+          setMockupAccel({
+            x: Number((acc.x || 0).toFixed(1)),
+            y: Number((acc.y || 0).toFixed(1)),
+            z: Number((acc.z || 0).toFixed(1))
+          });
+        }
+      };
+      window.addEventListener('devicemotion', handleMotion, { once: false });
+    }
+
+    setIsMockupLive(true);
+  };
+
+  useEffect(() => {
+    if (mockupVideoRef.current && mockupStream) {
+      mockupVideoRef.current.srcObject = mockupStream;
+    }
+  }, [mockupStream]);
+
+  // Clean up media tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (mockupStream) {
+        mockupStream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [mockupStream]);
+
+  // High risk locations list
   const highRiskLocations = [
     {
       id: 'LOC-17',
@@ -108,7 +192,6 @@ export default function UnifiedAppView({
     }
   ];
 
-  // Nav menu items matching the design sidebar
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'live', label: 'Live Monitoring', icon: Radio },
@@ -122,14 +205,61 @@ export default function UnifiedAppView({
   ];
 
   return (
-    <div className="flex h-screen bg-[#070b14] text-slate-100 font-sans overflow-hidden select-none">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#070b14] text-slate-100 font-sans select-none overflow-x-hidden">
       {/* ─────────────────────────────────────────────────────────────
-          LEFT SIDEBAR (Navy / Dark Blue glass style)
+          1. MOBILE TOP APP BAR & DRAWER (Visible on Mobile / Tablets)
          ───────────────────────────────────────────────────────────── */}
-      <aside className="w-56 flex-shrink-0 bg-[#0c1427] border-r border-slate-800/80 flex flex-col justify-between z-20">
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0c1427] border-b border-slate-800 sticky top-0 z-50">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
+            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+          >
+            {isMobileDrawerOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+          <div className="flex items-center space-x-1">
+            <span className="text-lg font-black text-white">Jan</span>
+            <span className="text-lg font-black text-emerald-400">Drishti</span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setActiveNav('live')}
+            className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[11px] font-bold flex items-center space-x-1"
+          >
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            <span>Live Telemetry</span>
+          </button>
+
+          <button
+            onClick={onOpenUpload}
+            className="p-2 rounded-lg bg-emerald-500 text-slate-950 shadow"
+          >
+            <Camera className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Navigation Backdrop */}
+      {isMobileDrawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileDrawerOpen(false)}
+        />
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. SIDEBAR NAVIGATION (Desktop persistent, Mobile Slide-over)
+         ───────────────────────────────────────────────────────────── */}
+      <aside
+        className={`fixed md:sticky top-0 left-0 h-screen w-60 bg-[#0c1427] border-r border-slate-800/80 flex flex-col justify-between z-50 transition-transform duration-200 ease-in-out ${
+          isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
         <div>
-          {/* Brand Logo Header */}
-          <div className="p-4 flex items-center space-x-2 border-b border-slate-800/60">
+          {/* Logo */}
+          <div className="p-4 border-b border-slate-800/60">
             <div className="flex items-center space-x-1.5">
               <span className="text-xl font-bold tracking-tight text-white">Jan</span>
               <div className="relative flex items-center justify-center">
@@ -137,43 +267,49 @@ export default function UnifiedAppView({
                 <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
             </div>
-          </div>
-          <div className="px-4 py-1 text-[10px] text-slate-400 tracking-wider">
-            Safer Roads • Smarter Cities
+            <p className="text-[10px] text-slate-400 tracking-wider mt-0.5">Safer Roads • Smarter Cities</p>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
+          {/* Links */}
+          <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeNav === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveNav(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                  onClick={() => {
+                    setActiveNav(item.id);
+                    setIsMobileDrawerOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.id === 'live' && (
+                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* User / Admin Profile Card at bottom */}
+        {/* Profile */}
         <div className="p-3 border-t border-slate-800/70">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/70 transition-colors cursor-pointer">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40">
             <div className="flex items-center space-x-2.5">
               <div className="w-8 h-8 rounded-full bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-xs font-bold text-indigo-200">
                 AD
               </div>
               <div className="text-left">
-                <p className="text-xs font-semibold text-slate-200 leading-tight">Admin</p>
+                <p className="text-xs font-semibold text-slate-200">Admin</p>
                 <p className="text-[10px] text-slate-400">City Authority</p>
               </div>
             </div>
@@ -183,11 +319,11 @@ export default function UnifiedAppView({
       </aside>
 
       {/* ─────────────────────────────────────────────────────────────
-          MAIN CONTENT AREA (Tabs / Views)
+          3. MAIN CONTENT CONTAINER (Fully Responsive Grid)
          ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-gradient-to-b from-[#091122] to-[#070b14]">
-        {/* Top Floating App Bar */}
-        <header className="h-14 px-6 border-b border-slate-800/70 flex items-center justify-between flex-shrink-0 bg-[#0c1427]/50 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-[#091122] to-[#070b14]">
+        {/* Desktop Header */}
+        <header className="hidden md:flex h-14 px-6 border-b border-slate-800/70 items-center justify-between flex-shrink-0 bg-[#0c1427]/60 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-lg text-white">Jan</span>
@@ -198,7 +334,20 @@ export default function UnifiedAppView({
             </span>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Live Monitoring Quick Toggle */}
+            <button
+              onClick={() => setActiveNav('live')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors ${
+                activeNav === 'live'
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
+                  : 'bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25'
+              }`}
+            >
+              <Radio className="h-3.5 w-3.5 animate-pulse" />
+              <span>Mobile Live Collector</span>
+            </button>
+
             {/* Weather / Location Pill */}
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-xs text-slate-200">
               <MapPin className="h-3.5 w-3.5 text-blue-400" />
@@ -208,13 +357,6 @@ export default function UnifiedAppView({
               <span>28°C Clear Sky</span>
             </div>
 
-            {/* Notification Bell */}
-            <button className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#0c1427]" />
-            </button>
-
-            {/* Ingest Button */}
             <button
               onClick={onOpenUpload}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center space-x-1.5 shadow-md shadow-emerald-500/20"
@@ -226,15 +368,15 @@ export default function UnifiedAppView({
         </header>
 
         {/* ───────────────────────────────────────────────────────────
-            VIEW 1: PRIMARY DASHBOARD (Matches Top Main Screenshot + Mobile)
+            VIEW 1: PRIMARY DASHBOARD (With Responsive Grid)
            ─────────────────────────────────────────────────────────── */}
         {activeNav === 'dashboard' && (
-          <div className="p-5 flex gap-5 flex-1 min-h-0">
-            {/* Center Main Stage (KPIs + GIS Map + High Risk Panel) */}
+          <div className="p-3 sm:p-5 flex flex-col xl:flex-row gap-5 flex-1 min-h-0">
+            {/* Center Area */}
             <div className="flex-1 flex flex-col space-y-4 min-w-0">
-              {/* Hero Subtitle */}
+              {/* Header Title */}
               <div className="text-center py-1">
-                <h1 className="text-xl font-bold tracking-tight text-white flex items-center justify-center space-x-2">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center justify-center space-x-2">
                   <span>Jan</span>
                   <span className="text-emerald-400">Drishti</span>
                 </h1>
@@ -243,73 +385,73 @@ export default function UnifiedAppView({
                 </p>
               </div>
 
-              {/* 5 KPI Metric Cards Matching Graphic */}
-              <div className="grid grid-cols-5 gap-3">
+              {/* 5 KPI Metric Cards (Auto Wrapping for Mobile) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
                 {/* 1. Total Detections */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md hover:border-slate-700 transition-all">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
+                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 flex items-center justify-center text-white shadow-lg shadow-rose-500/20 flex-shrink-0">
                     <Flame className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Total Detections</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Total Detections</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-lg font-black text-white">{overview?.total_hazards_detected || '1,248'}</span>
+                      <span className="text-base sm:text-lg font-black text-white">{overview?.total_hazards_detected || '1,248'}</span>
                       <span className="text-[10px] text-emerald-400 font-semibold">+12%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Potholes */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md hover:border-slate-700 transition-all">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 flex-shrink-0">
                     <Activity className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Potholes</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Potholes</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-lg font-black text-white">482</span>
+                      <span className="text-base sm:text-lg font-black text-white">482</span>
                       <span className="text-[10px] text-emerald-400 font-semibold">+18%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 3. Cracks */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md hover:border-slate-700 transition-all">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 flex-shrink-0">
                     <XCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Cracks</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Cracks</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-lg font-black text-white">436</span>
+                      <span className="text-base sm:text-lg font-black text-white">436</span>
                       <span className="text-[10px] text-emerald-400 font-semibold">+9%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 4. Waterlogging Risk */}
-                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md hover:border-slate-700 transition-all">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-3 flex items-center space-x-3 shadow-md">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 flex-shrink-0">
                     <Droplets className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Waterlogging</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Waterlogging</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-lg font-black text-white">192</span>
+                      <span className="text-base sm:text-lg font-black text-white">192</span>
                       <span className="text-[10px] text-emerald-400 font-semibold">+5%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 5. Road Health Score */}
-                <div className="bg-[#0f172a]/90 border border-emerald-500/30 rounded-2xl p-3 flex items-center space-x-3 shadow-md bg-emerald-500/5 hover:border-emerald-500/50 transition-all">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                <div className="col-span-2 sm:col-span-1 bg-[#0f172a]/90 border border-emerald-500/30 rounded-2xl p-3 flex items-center space-x-3 shadow-md bg-emerald-500/5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 flex-shrink-0">
                     <Gauge className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-400">Health Score</span>
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 block leading-tight">Health Score</span>
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="text-lg font-black text-white">
+                      <span className="text-base sm:text-lg font-black text-white">
                         {overview?.city_average_health_score ? `${overview.city_average_health_score}/100` : '72/100'}
                       </span>
                       <span className="text-[10px] text-emerald-400 font-semibold">+6%</span>
@@ -319,18 +461,18 @@ export default function UnifiedAppView({
               </div>
 
               {/* Lower Split: City Road Map + High Risk Locations Panel */}
-              <div className="grid grid-cols-12 gap-4 flex-1 min-h-[460px]">
-                {/* Map Container (Cols 8) */}
-                <div className="col-span-8 bg-[#0f172a] border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+                {/* Map Container */}
+                <div className="lg:col-span-8 bg-[#0f172a] border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col shadow-xl">
                   {/* Map Header Toolbar */}
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-bold text-white">City Road Map</span>
                       <span className="text-[11px] text-slate-400 font-mono">(Chandigarh)</span>
                     </div>
 
                     {/* Filter Pills */}
-                    <div className="flex items-center space-x-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-[11px]">
+                    <div className="flex items-center space-x-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-[11px] overflow-x-auto">
                       {['All Issues', 'Potholes', 'Cracks', 'Waterlogging'].map((f) => {
                         const key = f.toLowerCase().replace(' ', '');
                         const isSel = filterType === (key === 'allissues' ? 'all' : key);
@@ -338,7 +480,7 @@ export default function UnifiedAppView({
                           <button
                             key={f}
                             onClick={() => setFilterType(key === 'allissues' ? 'all' : key)}
-                            className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all ${
                               isSel ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -346,13 +488,10 @@ export default function UnifiedAppView({
                           </button>
                         );
                       })}
-                      <button className="p-1 text-slate-400 hover:text-white">
-                        <Maximize2 className="h-3.5 w-3.5" />
-                      </button>
                     </div>
                   </div>
 
-                  {/* Search Bar inside map header */}
+                  {/* Search Bar */}
                   <div className="mb-2 relative">
                     <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
                     <input
@@ -364,8 +503,8 @@ export default function UnifiedAppView({
                     />
                   </div>
 
-                  {/* Map Canvas */}
-                  <div className="flex-1 rounded-xl overflow-hidden border border-slate-800 relative min-h-[360px]">
+                  {/* Leaflet Map Canvas */}
+                  <div className="h-[320px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-800 relative">
                     <RoadMap
                       geojson={roadsGeoJson}
                       observations={observations}
@@ -374,8 +513,8 @@ export default function UnifiedAppView({
                   </div>
                 </div>
 
-                {/* High Risk Locations Column (Cols 4) */}
-                <div className="col-span-4 bg-[#0f172a] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+                {/* High Risk Locations Column */}
+                <div className="lg:col-span-4 bg-[#0f172a] border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xl">
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-bold text-white">High Risk Locations</span>
@@ -387,19 +526,18 @@ export default function UnifiedAppView({
                       </button>
                     </div>
 
-                    {/* Risk Items */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {highRiskLocations.map((loc) => (
                         <div
                           key={loc.id}
                           onClick={() => setSelectedLocation({ name: loc.name })}
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group"
                         >
                           <div className="flex items-center space-x-3">
                             <img
                               src={loc.thumbnail}
                               alt={loc.name}
-                              className="w-12 h-12 rounded-lg object-cover border border-slate-700 group-hover:scale-105 transition-transform"
+                              className="w-11 h-11 rounded-lg object-cover border border-slate-700 group-hover:scale-105 transition-transform"
                             />
                             <div>
                               <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">
@@ -416,20 +554,19 @@ export default function UnifiedAppView({
                               </p>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 transition-all" />
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Quick Bottom Insight */}
                   <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
                     <div className="flex items-center space-x-2 text-rose-400 font-bold text-[11px] uppercase mb-1">
                       <Flame className="h-3.5 w-3.5" />
-                      <span>Monsoon Vulnerability Warning</span>
+                      <span>Monsoon Warning</span>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      Sector 17 & Industrial Area show active base-layer cracking. Immediate resurfacing required.
+                      Sector 17 & Industrial Area show critical surface fatigue.
                     </p>
                   </div>
                 </div>
@@ -437,17 +574,17 @@ export default function UnifiedAppView({
             </div>
 
             {/* ─────────────────────────────────────────────────────────
-                RIGHT SIDE: MOBILE COLLECTOR PHONE MOCKUP (As shown in screenshot)
+                RIGHT SIDEBAR: INTERACTIVE PHONE MOCKUP (WITH REAL CAMERA & SENSOR TOGGLE)
                ───────────────────────────────────────────────────────── */}
-            <div className="w-[300px] flex-shrink-0 flex flex-col items-center justify-center py-2">
-              <div className="w-[280px] bg-slate-950 border-[6px] border-slate-800 rounded-[38px] shadow-2xl overflow-hidden flex flex-col relative h-[600px] ring-1 ring-slate-700">
-                {/* Phone Speaker Notch */}
+            <div className="w-full xl:w-[300px] flex-shrink-0 flex flex-col items-center justify-center py-2">
+              <div className="w-full max-w-[290px] bg-slate-950 border-[6px] border-slate-800 rounded-[38px] shadow-2xl overflow-hidden flex flex-col relative h-[590px] ring-1 ring-slate-700">
+                {/* Speaker Notch */}
                 <div className="w-28 h-4 bg-slate-800 rounded-b-xl mx-auto flex items-center justify-center">
                   <div className="w-10 h-1 bg-slate-900 rounded-full" />
                 </div>
 
                 {/* Phone Header */}
-                <div className="px-4 py-2 flex items-center justify-between border-b border-slate-900 text-xs">
+                <div className="px-4 py-1.5 flex items-center justify-between border-b border-slate-900 text-xs">
                   <span className="font-bold text-[11px] text-slate-300">9:41</span>
                   <div className="flex items-center space-x-1">
                     <span className="font-bold text-white text-xs">Jan</span>
@@ -460,24 +597,35 @@ export default function UnifiedAppView({
                 <div className="px-3 pt-2 pb-1 flex items-center justify-between text-[10px]">
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-semibold flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>Connected</span>
+                    <span>{isMockupLive ? 'Hardware Live' : 'Connected'}</span>
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-semibold flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    <span>Recording {mobileTimer}</span>
+                    <span>{isMockupLive ? 'Live Sensors' : 'Demo Stream'}</span>
                   </span>
                 </div>
 
-                {/* Real-time Dashcam / YOLO View with Bounding Box */}
+                {/* Video / Dashcam Canvas */}
                 <div className="p-3 flex-1 flex flex-col justify-between">
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner h-40 bg-slate-900">
-                    <img
-                      src="/images/roads/road_pothole_d00.jpg"
-                      alt="Road Camera Feed"
-                      className="w-full h-full object-cover"
-                    />
-                    {/* Real-time Simulated YOLO Bounding Box */}
-                    <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner h-40 bg-slate-900 flex items-center justify-center">
+                    {isMockupLive && mockupStream ? (
+                      <video
+                        ref={mockupVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src="/images/roads/road_pothole_d00.jpg"
+                        alt="Road Camera Feed"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+
+                    {/* Overlay Bounding Box */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="border-2 border-rose-500 bg-rose-500/20 w-28 h-16 rounded flex flex-col justify-between p-1">
                         <span className="text-[9px] font-black bg-rose-600 text-white px-1 rounded w-max">
                           Pothole 0.87
@@ -486,7 +634,7 @@ export default function UnifiedAppView({
                     </div>
                   </div>
 
-                  {/* Telemetry Sensor Grid */}
+                  {/* Real-time Telemetry Sensor Grid */}
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {/* Camera */}
                     <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center space-x-2">
@@ -495,7 +643,9 @@ export default function UnifiedAppView({
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400">Camera</p>
-                        <p className="text-[10px] font-bold text-emerald-400">Active</p>
+                        <p className="text-[10px] font-bold text-emerald-400">
+                          {isMockupLive ? 'Rear Active' : 'Simulated'}
+                        </p>
                       </div>
                     </div>
 
@@ -506,7 +656,9 @@ export default function UnifiedAppView({
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400">GPS</p>
-                        <p className="text-[9px] font-mono text-slate-200">30.7408, 76.7827</p>
+                        <p className="text-[9px] font-mono text-slate-200">
+                          {mockupGps.lat}, {mockupGps.lng}
+                        </p>
                       </div>
                     </div>
 
@@ -516,8 +668,10 @@ export default function UnifiedAppView({
                         <Activity className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-slate-400">Accelerometer</p>
-                        <p className="text-[9px] font-mono text-slate-200">X:2.1 Y:1.3 Z:0.8</p>
+                        <p className="text-[9px] text-slate-400">IMU / Z-Shock</p>
+                        <p className="text-[9px] font-mono text-slate-200">
+                          X:{mockupAccel.x} Y:{mockupAccel.y} Z:{mockupAccel.z}
+                        </p>
                       </div>
                     </div>
 
@@ -528,51 +682,39 @@ export default function UnifiedAppView({
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400">Speed</p>
-                        <p className="text-[10px] font-bold text-white">28 km/h</p>
+                        <p className="text-[10px] font-bold text-white">{mockupGps.speed} km/h</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Toggle Monitoring Action Button */}
                   <button
-                    onClick={() => setIsMobileRecording(!isMobileRecording)}
+                    onClick={toggleMockupSensors}
                     className={`mt-2 w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all ${
-                      isMobileRecording
-                        ? 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-lg shadow-emerald-500/20'
-                        : 'bg-rose-500 hover:bg-rose-600 text-white'
+                      isMockupLive
+                        ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20'
+                        : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-lg shadow-emerald-500/20'
                     }`}
                   >
-                    <span>{isMobileRecording ? 'Stop Monitoring' : 'Start Monitoring'}</span>
+                    <span>{isMockupLive ? 'Turn Off Camera & Sensors' : 'Turn On Live Hardware Sensors'}</span>
                   </button>
                 </div>
 
                 {/* Mobile Bottom Navigation Bar */}
                 <div className="bg-slate-900 border-t border-slate-800/80 px-4 py-2 flex items-center justify-between text-[10px] text-slate-400">
-                  <button
-                    onClick={() => setMobileTab('home')}
-                    className={`flex flex-col items-center ${mobileTab === 'home' ? 'text-blue-400 font-bold' : ''}`}
-                  >
+                  <button onClick={() => setActiveNav('dashboard')} className="flex flex-col items-center text-blue-400 font-bold">
                     <LayoutDashboard className="h-4 w-4" />
                     <span>Home</span>
                   </button>
-                  <button
-                    onClick={() => setMobileTab('detections')}
-                    className={`flex flex-col items-center ${mobileTab === 'detections' ? 'text-blue-400 font-bold' : ''}`}
-                  >
+                  <button onClick={() => setActiveNav('detection')} className="flex flex-col items-center hover:text-white">
                     <ScanSearch className="h-4 w-4" />
                     <span>Detections</span>
                   </button>
-                  <button
-                    onClick={() => setMobileTab('map')}
-                    className={`flex flex-col items-center ${mobileTab === 'map' ? 'text-blue-400 font-bold' : ''}`}
-                  >
-                    <MapPin className="h-4 w-4" />
-                    <span>Map</span>
+                  <button onClick={() => setActiveNav('live')} className="flex flex-col items-center hover:text-white">
+                    <Radio className="h-4 w-4 text-rose-400 animate-pulse" />
+                    <span>Collector</span>
                   </button>
-                  <button
-                    onClick={() => onOpenUpload()}
-                    className={`flex flex-col items-center ${mobileTab === 'upload' ? 'text-blue-400 font-bold' : ''}`}
-                  >
+                  <button onClick={onOpenUpload} className="flex flex-col items-center hover:text-white">
                     <Camera className="h-4 w-4" />
                     <span>Upload</span>
                   </button>
@@ -583,11 +725,44 @@ export default function UnifiedAppView({
         )}
 
         {/* ───────────────────────────────────────────────────────────
-            VIEW 2: AI DETECTION (Bottom Left in Screenshot)
+            VIEW 2: FULL MOBILE SENSOR COLLECTOR (Full-Screen Camera, GPS, & Accelerometer)
+           ─────────────────────────────────────────────────────────── */}
+        {activeNav === 'live' && (
+          <div className="p-3 sm:p-6 max-w-5xl w-full mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+                  <Radio className="h-5 w-5 text-rose-400 animate-pulse" />
+                  <span>Real-Time Mobile Collector & Telemetry Ingest</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Turn your phone or tablet into an automated road hazard scanner using browser camera, high-frequency GPS, and IMU shock sensors.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveNav('dashboard')}
+                className="self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+
+            {/* Embedded Full Sensor Module */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2 sm:p-5 shadow-2xl">
+              <MobileCollector
+                onUploadSuccess={onRefresh}
+                onRefresh={onRefresh}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ───────────────────────────────────────────────────────────
+            VIEW 3: AI DETECTION STUDIO
            ─────────────────────────────────────────────────────────── */}
         {activeNav === 'detection' && (
-          <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-xl font-bold text-white">AI Detection Studio</h2>
                 <p className="text-xs text-slate-400">
@@ -595,8 +770,7 @@ export default function UnifiedAppView({
                 </p>
               </div>
 
-              {/* Subtab Toggle (Image Detection / Video Detection) */}
-              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 p-1 rounded-xl self-start sm:self-auto">
                 <button
                   onClick={() => setAiSubTab('image')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
@@ -616,38 +790,34 @@ export default function UnifiedAppView({
               </div>
             </div>
 
-            {/* Main Stage: Canvas + Detection Results Panel */}
-            <div className="grid grid-cols-12 gap-6">
-              {/* Primary Visual Canvas */}
-              <div className="col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
-                <div className="relative w-full h-[380px] rounded-xl overflow-hidden border border-slate-800 bg-black flex items-center justify-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
+                <div className="relative w-full h-[260px] sm:h-[380px] rounded-xl overflow-hidden border border-slate-800 bg-black flex items-center justify-center">
                   <img
                     src={activeDetectionImg}
                     alt="AI Detection Surface"
                     className="w-full h-full object-cover"
                   />
 
-                  {/* High Fidelity YOLO Bounding Box Overlays */}
-                  <div className="absolute top-[52%] left-[16%] w-[24%] h-[32%] border-2 border-rose-500 bg-rose-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[10px] font-bold bg-rose-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[52%] left-[16%] w-[28%] sm:w-[24%] h-[32%] border-2 border-rose-500 bg-rose-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-rose-600 text-white px-1.5 py-0.5 rounded w-max shadow">
                       Pothole 0.92
                     </span>
                   </div>
 
-                  <div className="absolute top-[42%] left-[45%] w-[22%] h-[26%] border-2 border-amber-500 bg-amber-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[10px] font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[42%] left-[45%] w-[25%] sm:w-[22%] h-[26%] border-2 border-amber-500 bg-amber-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded w-max shadow">
                       Crack 0.87
                     </span>
                   </div>
 
-                  <div className="absolute top-[65%] left-[46%] w-[22%] h-[20%] border-2 border-emerald-500 bg-emerald-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
-                    <span className="text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded w-max shadow">
+                  <div className="absolute top-[65%] left-[46%] w-[25%] sm:w-[22%] h-[20%] border-2 border-emerald-500 bg-emerald-500/15 rounded flex flex-col justify-start p-1 pointer-events-none">
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded w-max shadow">
                       Patch 0.76
                     </span>
                   </div>
                 </div>
 
-                {/* Upload Button */}
                 <button
                   onClick={onOpenUpload}
                   className="mt-4 px-6 py-2.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-2 shadow-lg shadow-blue-500/20"
@@ -657,7 +827,6 @@ export default function UnifiedAppView({
                 </button>
                 <p className="text-[10px] text-slate-500 mt-1">Supports JPG, PNG (Max 10MB)</p>
 
-                {/* Thumbnail Strip */}
                 <div className="flex items-center space-x-3 mt-4 pt-3 border-t border-slate-800/80 w-full overflow-x-auto pb-1">
                   {[
                     '/images/roads/road_pothole_d00.jpg',
@@ -671,7 +840,7 @@ export default function UnifiedAppView({
                       src={thumb}
                       alt="Sample"
                       onClick={() => setActiveDetectionImg(thumb)}
-                      className={`w-20 h-14 rounded-lg object-cover cursor-pointer border-2 transition-all ${
+                      className={`w-16 h-12 sm:w-20 sm:h-14 rounded-lg object-cover cursor-pointer border-2 transition-all flex-shrink-0 ${
                         activeDetectionImg === thumb ? 'border-blue-500 scale-105' : 'border-slate-800 opacity-60 hover:opacity-100'
                       }`}
                     />
@@ -679,12 +848,10 @@ export default function UnifiedAppView({
                 </div>
               </div>
 
-              {/* Detection Results Breakdown Panel */}
-              <div className="col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+              <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-white mb-4">Detection Results</h3>
                   <div className="space-y-3">
-                    {/* Potholes */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 rounded-lg bg-rose-500 text-white">
@@ -695,7 +862,6 @@ export default function UnifiedAppView({
                       <span className="text-lg font-black text-rose-400">3</span>
                     </div>
 
-                    {/* Cracks */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 rounded-lg bg-amber-500 text-white">
@@ -706,7 +872,6 @@ export default function UnifiedAppView({
                       <span className="text-lg font-black text-amber-400">2</span>
                     </div>
 
-                    {/* Patch Damage */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 rounded-lg bg-emerald-500 text-white">
@@ -717,7 +882,6 @@ export default function UnifiedAppView({
                       <span className="text-lg font-black text-emerald-400">1</span>
                     </div>
 
-                    {/* Other */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 rounded-lg bg-indigo-500 text-white">
@@ -730,7 +894,7 @@ export default function UnifiedAppView({
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+                <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 text-[11px] text-slate-400 mt-4">
                   <p>Inference Model: <b className="text-slate-200">YOLOv8-IndiaRoads</b></p>
                   <p>Latency: <b className="text-emerald-400">28ms</b> • TensorRT Ready</p>
                 </div>
@@ -740,10 +904,10 @@ export default function UnifiedAppView({
         )}
 
         {/* ───────────────────────────────────────────────────────────
-            VIEW 3: ROAD ANALYSIS & RISK PREDICTION (Bottom Middle in Screenshot)
+            VIEW 4: ROAD ANALYSIS & RISK PREDICTION
            ─────────────────────────────────────────────────────────── */}
         {activeNav === 'analysis' && (
-          <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
+          <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white">Road Analysis & Risk Prediction</h2>
@@ -760,13 +924,10 @@ export default function UnifiedAppView({
               </button>
             </div>
 
-            {/* Top Row: Gauge + Risk Factors Bar */}
-            <div className="grid grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Infrastructure Health Score Gauge */}
-              <div className="col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center">
+              <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center">
                 <span className="text-xs uppercase font-bold text-slate-400 mb-4">Infrastructure Health Score</span>
-                
-                {/* Visual Arc Gauge */}
                 <div className="relative w-52 h-28 flex flex-col items-center justify-end">
                   <svg className="w-52 h-28 overflow-visible" viewBox="0 0 200 110">
                     <path
@@ -802,7 +963,7 @@ export default function UnifiedAppView({
               </div>
 
               {/* Risk Factors Breakdown */}
-              <div className="col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <span className="text-xs uppercase font-bold text-slate-400 block mb-4">Risk Factors</span>
                 <div className="space-y-3">
                   {[
@@ -829,12 +990,9 @@ export default function UnifiedAppView({
               </div>
             </div>
 
-            {/* Bottom Row: Predicted Risk Trend Chart + Action Callout */}
-            <div className="grid grid-cols-12 gap-6">
-              {/* Predicted Risk Chart (Next 6 Months) */}
-              <div className="col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <div className="md:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <span className="text-xs uppercase font-bold text-slate-400 block mb-4">Predicted Risk (Next 6 Months)</span>
-                {/* SVG Curve Line Chart matching visual */}
                 <div className="h-44 w-full relative">
                   <svg className="w-full h-full" viewBox="0 0 500 150" preserveAspectRatio="none">
                     <line x1="0" y1="130" x2="500" y2="130" stroke="#1e293b" strokeDasharray="4" />
@@ -847,7 +1005,6 @@ export default function UnifiedAppView({
                       stroke="#f59e0b"
                       strokeWidth="3"
                     />
-                    {/* Points on curve */}
                     <circle cx="30" cy="120" r="4" fill="#10b981" />
                     <circle cx="120" cy="115" r="4" fill="#10b981" />
                     <circle cx="210" cy="95" r="4" fill="#f59e0b" />
@@ -866,8 +1023,7 @@ export default function UnifiedAppView({
                 </div>
               </div>
 
-              {/* Recommendation Callout */}
-              <div className="col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div className="md:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
                 <div>
                   <span className="text-xs uppercase font-bold text-slate-400 block mb-3">Prediction Result</span>
                   <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
@@ -895,10 +1051,10 @@ export default function UnifiedAppView({
         )}
 
         {/* ───────────────────────────────────────────────────────────
-            VIEW 4: REPAIR VERIFICATION (Bottom Right in Screenshot)
+            VIEW 5: REPAIR VERIFICATION
            ─────────────────────────────────────────────────────────── */}
         {activeNav === 'repair' && (
-          <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
+          <div className="p-4 sm:p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white">Repair Verification</h2>
@@ -914,11 +1070,9 @@ export default function UnifiedAppView({
               </button>
             </div>
 
-            {/* Split Comparison Slider Canvas */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-              <div className="grid grid-cols-2 gap-4 relative">
-                {/* Left: Before Repair */}
-                <div className="relative rounded-xl overflow-hidden border border-rose-500/40 h-72">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
+                <div className="relative rounded-xl overflow-hidden border border-rose-500/40 h-56 sm:h-72">
                   <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow z-10">
                     Before Repair
                   </span>
@@ -929,8 +1083,7 @@ export default function UnifiedAppView({
                   />
                 </div>
 
-                {/* Right: After Repair */}
-                <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 h-72">
+                <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 h-56 sm:h-72">
                   <span className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold text-xs shadow z-10">
                     After Repair
                   </span>
@@ -940,20 +1093,11 @@ export default function UnifiedAppView({
                     className="w-full h-full object-cover"
                   />
                 </div>
-
-                {/* Central Comparison Divider Pill */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-white shadow-2xl z-20">
-                  <div className="flex items-center -space-x-1">
-                    <ChevronLeft className="h-4 w-4" />
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
-                </div>
               </div>
 
-              {/* Verification Outcome Banner */}
               <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/30">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/30 flex-shrink-0">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <div>
@@ -965,8 +1109,7 @@ export default function UnifiedAppView({
                 </div>
               </div>
 
-              {/* Detail Metrics Row */}
-              <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800 text-xs">
                 <div>
                   <span className="text-slate-400">Location</span>
                   <p className="font-bold text-slate-200 mt-0.5">Sector 34, Chandigarh</p>
@@ -991,9 +1134,9 @@ export default function UnifiedAppView({
         )}
 
         {/* ───────────────────────────────────────────────────────────
-            VIEW 5: OTHER NAVS (GIS, Live Monitoring, Reports, Vehicles)
+            VIEW 6: GIS / OTHER TABS
            ─────────────────────────────────────────────────────────── */}
-        {['gis', 'live', 'reports', 'vehicles', 'settings'].includes(activeNav) && (
+        {['gis', 'reports', 'vehicles', 'settings'].includes(activeNav) && (
           <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
@@ -1001,7 +1144,7 @@ export default function UnifiedAppView({
               </div>
               <h3 className="text-lg font-bold text-white capitalize">{activeNav} Module Active</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Real-time synchronized data layer for {activeNav}. Click Dashboard to return to primary overview.
+                Live synchronized GIS layer for {activeNav}. Click Dashboard to return to primary overview.
               </p>
               <button
                 onClick={() => setActiveNav('dashboard')}
