@@ -3,10 +3,12 @@ import UserMobileApp from './components/UserMobileApp';
 import UnifiedAppView from './components/UnifiedAppView';
 import UploadModal from './components/UploadModal';
 import AuthPortal from './components/AuthPortal';
+import LandingPage from './components/LandingPage';
 import { Smartphone, Monitor, LogOut, ShieldCheck } from 'lucide-react';
 import { fetchOverview, fetchRoadsGeoJSON, fetchObservations, fetchRepairs, checkSystemHealth } from './services/api';
 
 export default function App() {
+  const [authEntry, setAuthEntry] = useState(null);
   // Current Authenticated User & Role Session
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -86,6 +88,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setAuthEntry(null);
     try {
       localStorage.removeItem('jandrishti_auth_user');
       localStorage.removeItem('jandrishti_active_platform');
@@ -115,7 +118,10 @@ export default function App() {
   // FIRST SCREEN: IF NOT LOGGED IN, RENDER AUTH PORTAL
   // ─────────────────────────────────────────────────────────────
   if (!currentUser) {
-    return <AuthPortal onAuthSuccess={handleAuthSuccess} />;
+    if (!authEntry) {
+      return <LandingPage onLogin={() => setAuthEntry('login')} onSignup={() => setAuthEntry('signup')} />;
+    }
+    return <AuthPortal onAuthSuccess={handleAuthSuccess} initialMode={authEntry} onBack={() => setAuthEntry(null)} />;
   }
 
   return (

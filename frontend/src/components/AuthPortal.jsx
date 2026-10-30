@@ -22,11 +22,11 @@ import {
 } from 'lucide-react';
 import { loginUser, signupCitizen, signupDeveloper } from '../services/api';
 
-export default function AuthPortal({ onAuthSuccess }) {
+export default function AuthPortal({ onAuthSuccess, initialMode = 'login', onBack }) {
   // Target Role: 'citizen' | 'developer'
   const [selectedRole, setSelectedRole] = useState('citizen');
   // Auth Mode: 'login' | 'signup'
-  const [authMode, setAuthMode] = useState('login');
+  const [authMode, setAuthMode] = useState(initialMode);
 
   // Common form fields
   const [showPassword, setShowPassword] = useState(false);
@@ -233,6 +233,7 @@ export default function AuthPortal({ onAuthSuccess }) {
 
       {/* Main Container Card */}
       <div className="w-full max-w-xl bg-[#0c1427]/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 space-y-6">
+        {onBack && <button onClick={onBack} className="text-xs text-slate-400 hover:text-white">← Back to JanDrishti</button>}
         
         {/* JanDrishti Logo & Header */}
         <div className="text-center space-y-1.5">
@@ -698,4 +699,3 @@ export default function AuthPortal({ onAuthSuccess }) {
     </div>
   );
 }
-
