@@ -244,3 +244,39 @@ def test_independent_gps_fix_never_invents_road_names():
     # Must NOT invent 'Chandigarh Urban Network' or snap to distant segment
     assert "Chandigarh Urban Network" not in (data["matched_road_name"] or "")
     assert "Independent GPS Fix" in (data["matched_road_name"] or "")
+
+
+def test_wet_water_filled_pothole_detected_as_hazard():
+    """
+    Real-world water-filled potholes with specular puddle reflections
+    must be detected as D40 Potholes with is_hazard: True, NOT marked as clean road.
+    """
+    # Create realistic water-filled puddle pothole with sky reflection inside cavity
+    np.random.seed(303)
+    img = np.zeros((480, 640, 3), dtype=np.uint8)
+    asphalt = np.clip(105 + np.random.normal(0, 6, (480, 640)), 80, 130).astype(np.uint8)
+    img[:, :, 0] = asphalt
+    img[:, :, 1] = asphalt
+    img[:, :, 2] = asphalt
+
+    # Dark broken cavity perimeter
+    cavity_center = (320, 260)
+    cv2.ellipse(img, cavity_center, (95, 58), 5, 0, 360, (30, 30, 30), -1)
+    # Bright water reflection puddle inside the basin
+    cv2.ellipse(img, cavity_center, (76, 42), 5, 0, 360, (175, 175, 180), -1)
+
+    _, buf = cv2.imencode(".jpg", img)
+    wet_bytes = buf.tobytes()
+
+    res = client.post(
+        "/api/v1/observations/upload",
+        files={"file": ("wet_pothole_test.jpg", io.BytesIO(wet_bytes), "image/jpeg")},
+        data={"vehicle_id": "MOB-3FB127FA", "latitude": 30.7333, "longitude": 76.7794, "sector": "Ludhiana - Chandigarh Highway"}
+    )
+
+    assert res.status_code == 201, res.text
+    data = res.json()["data"]
+    assert data["road_photo_validated"] is True
+    assert data["report_status"] == "pending_review"
+    assert data["is_hazard"] is True
+    assert any(d["class_id"] == "D40" for d in data["detections"])

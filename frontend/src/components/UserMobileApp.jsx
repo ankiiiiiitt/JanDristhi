@@ -1321,6 +1321,26 @@ export default function UserMobileApp({
                             </div>
                           )}
 
+                          {/* Photo Defect Breakdown if available */}
+                          {uploadSuccessData.detections?.length > 0 && !uploadSuccessData.inspection_summary && (
+                            <div className="bg-[#f0f7f4] border border-emerald-200/90 rounded-xl p-3 text-left text-[11px] space-y-1.5 shadow-xs">
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="text-slate-800">Detected Road Defects:</span>
+                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">
+                                  {uploadSuccessData.detections.length} Defect{uploadSuccessData.detections.length > 1 ? 's' : ''} Identified
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {uploadSuccessData.detections.map((d, i) => (
+                                  <span key={i} className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-white border border-rose-200 text-rose-700 text-[10px] font-bold">
+                                    <span>{d.class_name || d.class_id}</span>
+                                    <span className="text-slate-500 font-mono">({Math.round((d.confidence || 0) * 100)}%)</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {uploadSuccessData.preview_url && !uploadSuccessData.isVideo && (
                             <div className="w-28 h-20 mx-auto rounded-xl overflow-hidden border border-slate-200 shadow-xs">
                               <img src={uploadSuccessData.preview_url} alt="Uploaded" className="w-full h-full object-cover" />

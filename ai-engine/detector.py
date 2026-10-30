@@ -200,8 +200,10 @@ class RoadDamageDetector:
     def _analyze_image_surface_cv(self, img_path: Path) -> List[Dict[str, Any]]:
         """
         Performs real OpenCV computer vision detection for road hazards:
-        - Black-Hat morphological transformation for pothole cavities (D40).
-        - Canny edge detection & morphological fissure clustering for structural cracks (D00, D10, D20).
+        - Multi-modal pothole cavity detection:
+          * Dry dark cavity depressions (depth shadow contrast vs asphalt).
+          * Wet water-filled pothole puddles (bi-modal water reflection basin & broken perimeter).
+        - Canny edge clustering & structural crack analysis for fatigue Alligator (D20), Transverse (D10), and Longitudinal (D00) cracks.
         - Computes real bounding boxes, actual surface area, contrast confidence, and severity.
         """
         try:
@@ -217,119 +219,145 @@ class RoadDamageDetector:
         h, w = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Road ROI: lower 70% of frame represents the driving surface
-        roi_y = int(h * 0.25)
+        # Road ROI: lower 80% of frame represents the driving surface
+        roi_y = int(h * 0.20)
         road_roi = gray[roi_y:, :]
+        roi_h, roi_w = road_roi.shape
+        med = float(np.median(road_roi))
+        blurred = cv2.GaussianBlur(road_roi, (7, 7), 0)
         detections: List[Dict[str, Any]] = []
 
-        # 1. Pothole / cavity detection via dark depression contrast analysis (D40)
-        med = float(np.median(road_roi))
-        dark_mask = cv2.inRange(road_roi, 0, int(max(10, med - 25)))
-        kernel_pot = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-        dark_clean = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_pot)
-        contours_pot, _ = cv2.findContours(dark_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        def iou(b1, b2):
+            xi1, yi1 = max(b1[0], b2[0]), max(b1[1], b2[1])
+            xi2, yi2 = min(b1[2], b2[2]), min(b1[3], b2[3])
+            inter = max(0, xi2 - xi1) * max(0, yi2 - yi1)
+            a1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+            a2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+            return inter / float(max(1, a1 + a2 - inter))
 
-        for c in contours_pot:
+        # 1. POTHOLE DETECTION (D40): Dry dark cavity & wet water-filled puddle
+        dark_mask = cv2.inRange(road_roi, 0, int(max(10, med - 25)))
+        k_pot = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+        dark_clean = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, k_pot)
+        cnts_dark, _ = cv2.findContours(dark_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        otsu_val, thresh_otsu = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        cnts_puddle, _ = cv2.findContours(thresh_otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        pothole_candidates = []
+        for c in cnts_dark:
+            pothole_candidates.append(('dry', c))
+        # Wet puddles enabled if bimodal Otsu contrast is significant (water reflecting sky)
+        if (otsu_val - med) >= 12.0 or np.std(road_roi) > 20.0:
+            for c in cnts_puddle:
+                pothole_candidates.append(('wet', c))
+
+        pothole_candidates.sort(key=lambda x: cv2.contourArea(x[1]), reverse=True)
+
+        for pot_type, c in pothole_candidates:
             area = cv2.contourArea(c)
-            if 1000 < area < 80000:
+            if 900 < area < 100000:
                 x, y, bw, bh = cv2.boundingRect(c)
-                if bw < 25 or bh < 20:
+                if bw < 35 or bh < 25:
+                    continue
+                if bw >= 0.90 * roi_w:
+                    continue
+                if y == 0 and bh > 0.40 * roi_h:
                     continue
 
                 aspect = bw / float(max(1, bh))
-                # Potholes are compact cavities (not long thin lines)
-                if not (0.35 <= aspect <= 3.0):
+                if not (0.35 <= aspect <= 3.2):
                     continue
 
-                y += roi_y
-                cavity_val = float(np.mean(gray[y:y+bh, x:x+bw]))
-                bg_val = float(np.mean(gray[max(0, y-20):y, x:x+bw])) if y > 20 else med
-                contrast = max(0.0, (bg_val - cavity_val) / max(1.0, bg_val))
-
-                # Require authentic darker depression contrast
-                if contrast < 0.12 or cavity_val > 140.0:
+                # Potholes are solid basin/cavity bowls (not thin diagonal painted lane lines)
+                extent = area / float(max(1, bw * bh))
+                if extent < 0.22:
                     continue
 
-                conf = round(min(0.96, max(0.55, 0.52 + contrast * 0.6)), 2)
+                y_full = y + roi_y
+                patch = gray[y_full:y_full+bh, x:x+bw]
+                patch_std = float(np.std(patch))
+
+                mask = np.zeros((bh, bw), dtype=np.uint8)
+                cv2.drawContours(mask, [c], -1, 255, -1, offset=(-x, -y))
+                inner_mean = cv2.mean(patch, mask=mask)[0] if np.count_nonzero(mask) > 0 else float(np.mean(patch))
+                contrast = abs(inner_mean - med) / max(1.0, med)
+
+                if contrast < 0.10 and patch_std < 24.0:
+                    continue
+
+                x1 = max(0, min(w - 1, x))
+                y1 = max(0, min(h - 1, y_full))
+                x2 = max(x1 + 1, min(w, x + bw))
+                y2 = max(y1 + 1, min(h, y_full + bh))
+
+                if any(iou([x1, y1, x2, y2], d['bbox']) > 0.20 for d in detections if d['class_id'] == 'D40'):
+                    continue
+
+                conf = float(round(min(0.96, max(0.72, 0.65 + contrast * 0.7)), 2))
                 area_sqm = round(area / 45000.0, 2)
                 severity = assess_damage_severity("D40", area_sqm, conf, contrast)
 
-                # Validate bounding box boundaries
-                x1 = max(0, min(w - 1, x))
-                y1 = max(0, min(h - 1, y))
-                x2 = max(x1 + 1, min(w, x + bw))
-                y2 = max(y1 + 1, min(h, y + bh))
-
                 detections.append({
-                    "class_id": "D40",
-                    "class_name": DAMAGE_CLASSES["D40"],
-                    "confidence": conf,
-                    "bbox": [x1, y1, x2, y2],
-                    "severity": severity,
-                    "estimated_area_sqm": max(0.15, area_sqm),
-                    "engine": "YOLOv8-OpenCV-Cavity"
+                    'class_id': 'D40',
+                    'class_name': DAMAGE_CLASSES['D40'],
+                    'confidence': conf,
+                    'bbox': [x1, y1, x2, y2],
+                    'severity': severity,
+                    'estimated_area_sqm': max(0.20, area_sqm),
+                    'engine': f'YOLOv8-OpenCV-Pothole-{pot_type.capitalize()}'
                 })
+                if len([d for d in detections if d['class_id'] == 'D40']) >= 2:
+                    break
 
-        # 2. Crack detection via Canny & morphology (D00, D10, D20)
-        blurred = cv2.GaussianBlur(road_roi, (5, 5), 0)
-        edges = cv2.Canny(blurred, 40, 120)
-        kernel_crack = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        dilated = cv2.dilate(edges, kernel_crack, iterations=1)
-        contours_crk, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # 2. CRACKS AND ALLIGATOR FATIGUE (D00, D10, D20)
+        edges = cv2.Canny(blurred, 35, 105)
+        edge_ratio = np.count_nonzero(edges) / float(road_roi.size)
 
-        for c in contours_crk:
-            area = cv2.contourArea(c)
-            if 800 < area < 25000:
-                x, y, bw, bh = cv2.boundingRect(c)
-                if bw < 20 and bh < 20:
-                    continue
+        if edge_ratio >= 0.018:
+            k_crack = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+            dilated = cv2.dilate(edges, k_crack, iterations=1)
+            cnts_crk, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts_crk = sorted(cnts_crk, key=cv2.contourArea, reverse=True)
 
-                y += roi_y
-
-                # If this region heavily overlaps an already detected pothole cavity, avoid duplicate crack
-                overlaps_pothole = any(
-                    d["class_id"] == "D40" and
-                    abs(d["bbox"][0] - x) < 60 and abs(d["bbox"][1] - y) < 60
-                    for d in detections
-                )
-                if overlaps_pothole:
-                    continue
-
-                aspect = bw / float(max(1, bh))
-                area_sqm = round(area / 60000.0, 2)
-
-                # Correct RDD2022 crack classification based on road driving geometry:
-                # D10: Transverse Cracks across the lane (width > height, aspect > 1.8)
-                # D00: Longitudinal Cracks along the wheel path (height > width, aspect < 0.55)
-                # D20: Alligator Cracking (interconnected mesh network, 0.55 <= aspect <= 1.8)
-                if aspect > 1.8:
-                    cid, cname = "D10", DAMAGE_CLASSES["D10"]
-                elif aspect < 0.55:
-                    cid, cname = "D00", DAMAGE_CLASSES["D00"]
-                else:
-                    cid, cname = "D20", DAMAGE_CLASSES["D20"]
-
-                overlap = any(
-                    abs(d["bbox"][0] - x) < 40 and abs(d["bbox"][1] - y) < 40
-                    for d in detections
-                )
-                if not overlap and area_sqm >= 0.1:
-                    conf = 0.84
-                    severity = assess_damage_severity(cid, area_sqm, conf)
+            for c in cnts_crk:
+                area = cv2.contourArea(c)
+                if 350 < area < 40000:
+                    x, y, bw, bh = cv2.boundingRect(c)
+                    if bw < 25 and bh < 25:
+                        continue
+                    y_full = y + roi_y
                     x1 = max(0, min(w - 1, x))
-                    y1 = max(0, min(h - 1, y))
+                    y1 = max(0, min(h - 1, y_full))
                     x2 = max(x1 + 1, min(w, x + bw))
-                    y2 = max(y1 + 1, min(h, y + bh))
+                    y2 = max(y1 + 1, min(h, y_full + bh))
+
+                    if any(iou([x1, y1, x2, y2], d['bbox']) > 0.25 for d in detections):
+                        continue
+
+                    aspect = bw / float(max(1, bh))
+                    area_sqm = round(area / 35000.0, 2)
+                    if aspect > 1.8:
+                        cid, cname = 'D10', DAMAGE_CLASSES['D10']
+                    elif aspect < 0.55:
+                        cid, cname = 'D00', DAMAGE_CLASSES['D00']
+                    else:
+                        cid, cname = 'D20', DAMAGE_CLASSES['D20']
+
+                    conf = float(round(min(0.92, max(0.68, 0.62 + min(0.25, edge_ratio))), 2))
+                    severity = assess_damage_severity(cid, area_sqm, conf)
 
                     detections.append({
-                        "class_id": cid,
-                        "class_name": cname,
-                        "confidence": conf,
-                        "bbox": [x1, y1, x2, y2],
-                        "severity": severity,
-                        "estimated_area_sqm": max(0.1, area_sqm),
-                        "engine": "YOLOv8-OpenCV-Fissure"
+                        'class_id': cid,
+                        'class_name': cname,
+                        'confidence': conf,
+                        'bbox': [x1, y1, x2, y2],
+                        'severity': severity,
+                        'estimated_area_sqm': max(0.12, area_sqm),
+                        'engine': 'YOLOv8-OpenCV-Crack'
                     })
+                    if len([d for d in detections if d['class_id'] != 'D40']) >= 2:
+                        break
 
         return detections
 
