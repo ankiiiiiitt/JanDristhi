@@ -33,7 +33,18 @@ export default function App() {
       setOverview(ovRes.data);
       setIsMock(ovRes.isMock);
       setRoadsGeoJson(roadsRes.data);
-      setObservations(obsRes.data || []);
+
+      // Merge backend observations with locally persisted user mobile reports
+      let localUserObs = [];
+      try {
+        localUserObs = JSON.parse(localStorage.getItem('jandrishti_user_observations') || '[]');
+      } catch (e) {}
+
+      const serverObs = obsRes.data || [];
+      // Combine with local user uploads at the top (deduplicated by observation_id)
+      const existingIds = new Set(localUserObs.map(o => o.observation_id));
+      const filteredServerObs = serverObs.filter(o => !existingIds.has(o.observation_id));
+      setObservations([...localUserObs, ...filteredServerObs]);
       setRepairs(repRes.data || []);
     } catch (e) {
       console.error("Error loading JanDrishti data:", e);
@@ -47,7 +58,15 @@ export default function App() {
   }, []);
 
   const handleUploadSuccess = (newObservation) => {
-    setObservations(prev => [newObservation, ...prev]);
+    setObservations(prev => {
+      const filtered = prev.filter(o => o.observation_id !== newObservation.observation_id);
+      const updated = [newObservation, ...filtered];
+      try {
+        localStorage.setItem('jandrishti_user_observations', JSON.stringify(updated.slice(0, 50)));
+      } catch (e) {}
+      return updated;
+    });
+
     if (overview) {
       setOverview(prev => ({
         ...prev,

@@ -5,7 +5,26 @@ import {
   MOCK_REPAIRS
 } from './mockData';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8199/api/v1';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL && !import.meta.env.VITE_API_BASE_URL.includes('localhost')) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://jandrishti-backend.onrender.com/api/v1';
+  }
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8199/api/v1';
+};
+
+export const BASE_URL = getApiBaseUrl();
+export const BACKEND_URL = BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+export function resolveImageUrl(url) {
+  if (!url) return '/images/roads/road_pothole_d00.jpg';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 export let isBackendOnline = false;
 

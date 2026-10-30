@@ -25,6 +25,7 @@ async def upload_observation(
     vehicle_id: str = Form("CTU-BUS-104"),
     latitude: float = Form(30.7398),
     longitude: float = Form(76.7827),
+    sector: Optional[str] = Form(None),
     altitude: Optional[float] = Form(None),
     speed_kmph: Optional[float] = Form(None),
     telemetry_z_shock: Optional[float] = Form(0.0),
@@ -75,10 +76,17 @@ async def upload_observation(
             segments = mock_store.road_segments
 
         snap_result = snap_gps_to_road_segment(latitude, longitude, segments, max_threshold_meters=150.0)
-        linked_segment_id = snap_result.get("segment_id") or "RS-CHD-SEC-17-001"
-        matched_road_name = snap_result.get("segment_name") or "Chandigarh Arterial Road"
-        matched_sector = snap_result.get("sector") or "Sector 17"
-        snapping_distance = snap_result.get("distance_meters")
+        is_matched = snap_result.get("matched", False)
+        if is_matched:
+            linked_segment_id = snap_result.get("segment_id")
+            matched_road_name = snap_result.get("segment_name") or "Urban Road Segment"
+            matched_sector = snap_result.get("sector") or sector or "Chandigarh"
+            snapping_distance = snap_result.get("distance_meters")
+        else:
+            linked_segment_id = snap_result.get("segment_id")
+            matched_sector = sector or snap_result.get("sector") or "Field Location"
+            matched_road_name = f"{matched_sector} (Live GPS Report)"
+            snapping_distance = snap_result.get("distance_meters")
 
         now_iso = datetime.now(timezone.utc).isoformat()
         # 3. Create observation record
@@ -105,16 +113,21 @@ async def upload_observation(
         # 4. Store in MongoDB or in-memory store
         if db_manager.is_connected and db_manager.db is not None:
             await db_manager.db.observations.insert_one(observation_record)
-            # Increment hazard count on the matched segment
-            await db_manager.db.road_segments.update_one(
-                {"segment_id": linked_segment_id},
-                {"$inc": {"hazard_count": len(parsed_detections)}}
-            )
+            if linked_segment_id:
+                # Increment hazard count on the matched segment
+                await db_manager.db.road_segments.update_one(
+                    {"segment_id": linked_segment_id},
+                    {"$inc": {"hazard_count": len(parsed_detections)}}
+                )
         else:
             mock_store.observations.insert(0, observation_record)
-            for s in mock_store.road_segments:
-                if s["segment_id"] == linked_segment_id:
-                    s["hazard_count"] = s.get("hazard_count", 0) + len(parsed_detections)
+            if linked_segment_id:
+                for s in mock_store.road_segments:
+                    if s["segment_id"] == linked_segment_id:
+                        s["hazard_count"] = s.get("hazard_count", 0) + len(parsed_detections)
+
+        if "_id" in observation_record:
+            observation_record["_id"] = str(observation_record["_id"])
 
         return {
             "success": True,

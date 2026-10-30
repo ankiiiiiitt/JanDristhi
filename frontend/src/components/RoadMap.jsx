@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Navigation, Layers, Compass, Crosshair, MapPin } from 'lucide-react';
+import { Navigation, Layers, Compass, Crosshair, MapPin, Eye } from 'lucide-react';
+import { resolveImageUrl } from '../services/api';
 
 // Fix default Leaflet icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -267,45 +268,75 @@ export default function RoadMap({
     }
   }, [geojson, liveLocation]);
 
+  const prevObsLengthRef = useRef(observations ? observations.length : 0);
+
   // Update Hazard Observation Markers
   useEffect(() => {
     if (markersLayerRef.current && observations) {
       markersLayerRef.current.clearLayers();
+      let latestMarker = null;
 
-      observations.forEach((obs) => {
-        const coords = obs.location?.coordinates;
+      observations.forEach((obs, idx) => {
+        const coords = obs.location?.coordinates || (obs.longitude && obs.latitude ? [obs.longitude, obs.latitude] : null);
         if (!coords || coords.length < 2) return;
         const [lng, lat] = coords;
 
         const firstDet = obs.detections?.[0] || {};
         const isCritical = firstDet.severity === 'critical';
+        const isUserLiveReport = obs.vehicle_id?.startsWith('MOB-') || obs.observation_id?.includes('LIVE') || obs.preview_url;
 
+        // Custom icon styling for high visibility of user reports vs survey
         const customMarker = L.circleMarker([lat, lng], {
-          radius: 8,
-          fillColor: isCritical ? '#ef4444' : '#f59e0b',
+          radius: isUserLiveReport ? 10 : 8,
+          fillColor: isUserLiveReport ? '#06b6d4' : isCritical ? '#ef4444' : '#f59e0b',
           color: '#ffffff',
-          weight: 2,
+          weight: isUserLiveReport ? 3 : 2,
           opacity: 1,
-          fillOpacity: 0.9
+          fillOpacity: 0.95
         });
 
+        const rawImg = obs.preview_url || obs.image_data_url || obs.image_url;
+        const resolvedImg = resolveImageUrl(rawImg);
+
         const popupContent = `
-          <div style="font-family:system-ui;min-width:210px;padding:2px;color:#f8fafc;">
-            <div style="font-weight:bold;font-size:13px;color:#f8fafc;margin-bottom:4px;">
-              ${firstDet.class_name || 'Road Hazard'}
+          <div style="font-family:system-ui;min-width:220px;max-width:270px;padding:3px;color:#f8fafc;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+              <b style="font-size:13px;color:#f8fafc;">${firstDet.class_name || 'Road Defect / Pothole'}</b>
+              ${isUserLiveReport ? '<span style="background:#06b6d4;color:#042f2e;font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:0.5px;">USER REPORT</span>' : ''}
             </div>
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">
-              Observation ID: ${obs.observation_id}
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;word-break:break-word;">
+              📍 ${obs.matched_road_name || obs.sector || 'Field Observation'}
             </div>
-            ${obs.image_url ? `<img src="${obs.image_url}" alt="Hazard" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;" onerror="this.onerror=null;this.src='/images/roads/road_pothole_d00.jpg';" />` : ''}
-            <p style="margin:3px 0;font-size:11px;color:#cbd5e1;">Severity: <b style="color:${isCritical ? '#ef4444' : '#f59e0b'}">${(firstDet.severity || 'Medium').toUpperCase()}</b></p>
-            <p style="margin:3px 0;font-size:11px;color:#cbd5e1;">Vehicle Z-Shock: <b>${obs.telemetry_z_shock || 0} m/s²</b></p>
-            <p style="margin:3px 0;font-size:11px;color:#cbd5e1;">Confidence: <b>${Math.round((firstDet.confidence || 0.85) * 100)}%</b></p>
+            <div style="width:100%;height:130px;border-radius:8px;overflow:hidden;margin-bottom:6px;background:#0f172a;border:1px solid #334155;">
+              <img
+                src="${resolvedImg}"
+                alt="Uploaded Hazard"
+                style="width:100%;height:100%;object-fit:cover;"
+                onerror="this.onerror=null;this.src='/images/roads/road_pothole_d00.jpg';"
+              />
+            </div>
+            <p style="margin:2px 0;font-size:11px;color:#cbd5e1;">Coordinates: <b style="color:#38bdf8;">${lat.toFixed(5)}°, ${lng.toFixed(5)}°</b></p>
+            <p style="margin:2px 0;font-size:11px;color:#cbd5e1;">Severity: <b style="color:${isCritical ? '#ef4444' : '#f59e0b'}">${(firstDet.severity || 'Medium').toUpperCase()}</b></p>
+            <p style="margin:2px 0;font-size:11px;color:#cbd5e1;">Source: <b>${obs.vehicle_id || 'Citizen Mobile'}</b></p>
+            <p style="margin:2px 0;font-size:10px;color:#64748b;">ID: ${obs.observation_id}</p>
           </div>
         `;
         customMarker.bindPopup(popupContent);
         markersLayerRef.current.addLayer(customMarker);
+
+        if (idx === 0) {
+          latestMarker = { marker: customMarker, lat, lng };
+        }
       });
+
+      // If a new observation was just added, auto-fly to it and open its popup
+      if (observations.length > prevObsLengthRef.current && latestMarker && mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([latestMarker.lat, latestMarker.lng], 16, { duration: 1.2 });
+        setTimeout(() => {
+          latestMarker.marker.openPopup();
+        }, 1300);
+      }
+      prevObsLengthRef.current = observations.length;
     }
   }, [observations]);
 
