@@ -67,6 +67,9 @@ class MockDataStore:
 
         # Load observations
         self.observations: List[Dict[str, Any]] = self._load_chandigarh_observations()
+        # Mirrors the database unique indexes while running without MongoDB.
+        self.report_ids = {o.get("report_id") for o in self.observations if o.get("report_id")}
+        self.deduplication_keys = {o.get("deduplication_key") for o in self.observations if o.get("deduplication_key")}
 
         # Load repair records
         self.repair_records: List[Dict[str, Any]] = self._load_chandigarh_repairs()

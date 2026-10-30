@@ -89,48 +89,28 @@ export async function fetchObservations(filters = {}) {
   return { data: MOCK_OBSERVATIONS, isMock: true };
 }
 
-export async function uploadObservation(formData) {
-  try {
-    const res = await fetch(`${BASE_URL}/observations/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    if (res.ok) {
-      const json = await res.json();
-      return { success: true, data: json.data };
-    }
-  } catch (e) {
-    console.warn("Upload failed, simulating client response:", e);
-  }
-
-  // Simulated fallback response
-  return {
-    success: true,
-    data: {
-      observation_id: `OBS-${Date.now()}`,
-      vehicle_id: formData.get("vehicle_id") || "VEH-KA04-9122",
-      location: {
-        type: "Point",
-        coordinates: [
-          parseFloat(formData.get("longitude") || "77.5946"),
-          parseFloat(formData.get("latitude") || "12.9716")
-        ]
-      },
-      detection_status: "processed",
-      detections: [
-        {
-          class_id: "D00",
-          class_name: "Pothole",
-          confidence: 0.94,
-          bbox: [120, 180, 290, 380],
-          severity: "critical",
-          estimated_area_sqm: 0.58
-        }
-      ],
-      linked_segment_id: "RS-MG-01",
-      captured_at: new Date().toISOString()
-    }
-  };
+export function uploadObservation(formData, { onProgress } = {}) {
+  // XMLHttpRequest provides real upload byte progress; fetch does not yet expose it
+  // consistently across mobile browsers.
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', `${BASE_URL}/observations/upload`);
+    request.responseType = 'json';
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    request.onerror = () => reject(new Error('Network error. Your report was not uploaded.'));
+    request.onload = () => {
+      const body = request.response || (() => { try { return JSON.parse(request.responseText); } catch { return {}; } })();
+      if (request.status >= 200 && request.status < 300 && body.success) {
+        if (onProgress) onProgress(100);
+        resolve({ success: true, duplicate: Boolean(body.duplicate), message: body.message, data: body.data });
+        return;
+      }
+      reject(new Error(body.detail || body.error?.message || `Upload failed (${request.status}).`));
+    };
+    request.send(formData);
+  });
 }
 
 export async function fetchRepairs(filters = {}) {
@@ -310,4 +290,3 @@ export async function signupDeveloper({ fullName, email, password, inviteCode })
     return { success: false, error: e.message || 'Network connection failed' };
   }
 }
-

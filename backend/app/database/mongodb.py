@@ -20,6 +20,10 @@ INDEX_SPECIFICATIONS = {
     ],
     "observations": [
         ("observation_id", {"unique": True}),
+        # A citizen report id is generated when the photo is captured and is reused
+        # for retries.  This is the authoritative duplicate guard.
+        ("report_id", {"unique": True, "sparse": True}),
+        ("deduplication_key", {"unique": True, "sparse": True}),
         ([("location", "2dsphere")], {}),
         ("linked_segment_id", {}),
         # Sector, severity, and detection status composite indexes with created_at
@@ -216,4 +220,3 @@ class MongoDBManager:
         return None
 
 db_manager = MongoDBManager()
-

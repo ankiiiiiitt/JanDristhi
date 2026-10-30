@@ -92,6 +92,7 @@ export default function UserMobileApp({
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccessData, setUploadSuccessData] = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const userVideoRef = useRef(null);
@@ -118,9 +119,12 @@ export default function UserMobileApp({
   const [capturedPreview, setCapturedPreview] = useState(null);
   const [lockedCoords, setLockedCoords] = useState(null);
   const [captureTimestamp, setCaptureTimestamp] = useState(null);
+  const [reportId, setReportId] = useState(null);
   const [cameraError, setCameraError] = useState(null);
   const [isCameraStarting, setIsCameraStarting] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraStreamRef = useRef(null);
 
   // Auto-acquire real device GPS on mount
   useEffect(() => {
@@ -162,6 +166,10 @@ export default function UserMobileApp({
     setIsCameraStarting(true);
     setCameraError(null);
     try {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(t => t.stop());
+        cameraStreamRef.current = null;
+      }
       if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
       }
@@ -197,6 +205,7 @@ export default function UserMobileApp({
         }
       }
 
+      cameraStreamRef.current = stream;
       setCameraStream(stream);
       if (userVideoRef.current) {
         userVideoRef.current.srcObject = stream;
@@ -213,12 +222,32 @@ export default function UserMobileApp({
   };
 
   const stopCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(t => t.stop());
+      cameraStreamRef.current = null;
+    }
     if (cameraStream) {
       cameraStream.getTracks().forEach(t => t.stop());
       setCameraStream(null);
     }
     if (userVideoRef.current) {
       userVideoRef.current.srcObject = null;
+    }
+    setTorchOn(false);
+  };
+
+  const toggleTorch = async () => {
+    try {
+      const stream = cameraStreamRef.current || cameraStream;
+      const track = stream?.getVideoTracks()?.[0];
+      if (track && track.getCapabilities && track.getCapabilities().torch) {
+        await track.applyConstraints({
+          advanced: [{ torch: !torchOn }]
+        });
+      }
+      setTorchOn(prev => !prev);
+    } catch (e) {
+      console.warn('Torch toggle error:', e);
     }
   };
 
@@ -250,6 +279,7 @@ export default function UserMobileApp({
     // Freeze exact GPS & timestamp at capture time
     const timestamp = new Date().toISOString();
     setCaptureTimestamp(timestamp);
+    setReportId(`RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
     setLockedCoords({
       lat: userCoords.lat,
       lng: userCoords.lng,
@@ -259,7 +289,7 @@ export default function UserMobileApp({
     });
 
     // 1. Grab frame from live video feed
-    if (userVideoRef.current && userVideoRef.current.videoWidth > 0) {
+    if (userVideoRef.current && (userVideoRef.current.videoWidth > 0 || userVideoRef.current.readyState >= 2)) {
       try {
         const video = userVideoRef.current;
         const canvas = document.createElement('canvas');
@@ -272,7 +302,9 @@ export default function UserMobileApp({
         setCapturedPreview(dataUrl);
 
         canvas.toBlob((blob) => {
-          setCapturedBlob(blob);
+          if (blob) {
+            setCapturedBlob(blob);
+          }
         }, 'image/jpeg', 0.92);
 
         setPhotoCaptured(true);
@@ -297,6 +329,7 @@ export default function UserMobileApp({
     setCapturedPreview(null);
     setLockedCoords(null);
     setCaptureTimestamp(null);
+    setReportId(null);
     setPhotoCaptured(false);
     setRecordingSaved(false);
     setRecordingSeconds(0);
@@ -311,13 +344,15 @@ export default function UserMobileApp({
     setCapturedPreview(null);
     setLockedCoords(null);
     setCaptureTimestamp(null);
+    setReportId(null);
     setPhotoCaptured(false);
     setRecordingSaved(false);
     setRecordingSeconds(0);
     setIsRecording(false);
     setUploadSuccessData(null);
     setUploadError(null);
-    startRearCamera();
+    stopCamera();
+    setUserTab('home');
   };
 
   const handleFileSelect = (e) => {
@@ -326,6 +361,7 @@ export default function UserMobileApp({
     const preview = URL.createObjectURL(file);
     const nowIso = new Date().toISOString();
     setCaptureTimestamp(nowIso);
+    setReportId(`RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
     setLockedCoords({
       lat: userCoords.lat,
       lng: userCoords.lng,
@@ -371,6 +407,7 @@ export default function UserMobileApp({
       setPhotoCaptured(true);
       const timestamp = new Date().toISOString();
       setCaptureTimestamp(timestamp);
+      setReportId(`RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
       setLockedCoords({
         lat: userCoords.lat,
         lng: userCoords.lng,
@@ -397,14 +434,20 @@ export default function UserMobileApp({
 
   const handleQuickUpload = async () => {
     setIsUploading(true);
+    setUploadProgress(0);
     setUploadError(null);
     try {
       const formData = new FormData();
       let blobToUpload = capturedBlob;
-      if (!blobToUpload) {
-        const imgRes = await fetch('/images/roads/road_pothole_d00.jpg');
-        blobToUpload = await imgRes.blob();
+      if (!blobToUpload && capturedPreview) {
+        try {
+          const res = await fetch(capturedPreview);
+          blobToUpload = await res.blob();
+        } catch (e) {
+          console.warn('Could not convert capturedPreview to blob:', e);
+        }
       }
+      if (!blobToUpload) throw new Error('No photo is available. Please retake the road photo.');
       formData.append('file', blobToUpload, 'road_hazard_recording.jpg');
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB');
 
@@ -419,15 +462,12 @@ export default function UserMobileApp({
       formData.append('sector', finalSector);
       formData.append('speed_kmph', '34.5');
       formData.append('telemetry_z_shock', '3.1');
+      formData.append('captured_at', exactTime);
+      formData.append('report_id', reportId || `RPT-MOB-${Date.now()}`);
 
-      let res = null;
-      try {
-        res = await uploadObservation(formData);
-      } catch (err) {
-        console.warn('Backend upload returned error or timeout, saving locally:', err);
-      }
+      const res = await uploadObservation(formData, { onProgress: setUploadProgress });
 
-      const generatedObsId = res?.data?.observation_id || `OBS-MOB-${Date.now().toString().slice(-6)}`;
+      const generatedObsId = res.data.observation_id;
       const enrichedObs = {
         observation_id: generatedObsId,
         vehicle_id: currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB',
@@ -438,15 +478,16 @@ export default function UserMobileApp({
         latitude: Number(finalLat),
         longitude: Number(finalLng),
         sector: finalSector,
-        matched_road_name: res?.data?.matched_road_name || `${finalSector} (Live User Report)`,
-        image_url: capturedPreview || res?.data?.image_url || '/images/roads/road_pothole_d00.jpg',
-        preview_url: capturedPreview || res?.data?.image_url,
-        detections: res?.data?.detections || [
-          { class_id: 'D00', class_name: 'Pothole', severity: 'critical', confidence: 0.94 }
-        ],
+        report_id: res.data.report_id,
+        report_status: res.data.report_status,
+        matched_road_name: res.data.matched_road_name || `${finalSector} (Live User Report)`,
+        image_url: res.data.image_url,
+        preview_url: capturedPreview || res.data.image_url,
+        detections: res.data.detections || [],
         telemetry_z_shock: 3.1,
-        captured_at: exactTime,
-        created_at: exactTime
+        captured_at: res.data.captured_at || exactTime,
+        created_at: res.data.created_at || exactTime,
+        duplicate: res.duplicate
       };
 
       setUploadSuccessData(enrichedObs);
@@ -460,12 +501,6 @@ export default function UserMobileApp({
       setIsUploading(false);
     }
   };
-
-  useEffect(() => {
-    if (userVideoRef.current && cameraStream) {
-      userVideoRef.current.srcObject = cameraStream;
-    }
-  }, [cameraStream, userTab]);
 
   useEffect(() => {
     let interval = null;
@@ -831,8 +866,12 @@ export default function UserMobileApp({
                       <ArrowLeft className="h-5 w-5" />
                     </button>
                     <span className="text-xs font-bold text-white">Record</span>
-                    <button className="p-1 text-slate-400 hover:text-white">
-                      <Zap className="h-4 w-4" />
+                    <button
+                      onClick={toggleTorch}
+                      title={torchOn ? "Turn Torch Off" : "Turn Torch On"}
+                      className={`p-1.5 rounded-lg transition-colors ${torchOn ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      <Zap className={`h-4 w-4 ${torchOn ? 'fill-amber-400' : ''}`} />
                     </button>
                   </div>
 
@@ -903,12 +942,20 @@ export default function UserMobileApp({
                       <div className="p-4 text-center space-y-2 max-w-xs">
                         <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
                         <p className="text-xs text-slate-300 font-semibold">{cameraError}</p>
-                        <button
-                          onClick={startRearCamera}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
-                        >
-                          Retry Camera
-                        </button>
+                        <div className="flex items-center justify-center space-x-2 pt-1">
+                          <button
+                            onClick={startRearCamera}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                          >
+                            Retry Camera
+                          </button>
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs shadow-md transition-all active:scale-95 border border-slate-700"
+                          >
+                            Choose Photo
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       /* 5. Camera Off / Tap to Start */
@@ -973,8 +1020,8 @@ export default function UserMobileApp({
                             <span>Road Hazard Uploaded & Logged!</span>
                           </div>
 
-                          <p className="text-xs text-slate-300 font-semibold">
-                            Observation ID: <span className="font-mono text-emerald-300">{uploadSuccessData.observation_id}</span>
+                        <p className="text-xs text-slate-300 font-semibold">
+                            {uploadSuccessData.duplicate ? 'Existing report:' : 'Report accepted:'} <span className="font-mono text-emerald-300">{uploadSuccessData.report_id || uploadSuccessData.observation_id}</span>
                           </p>
 
                           <p className="text-[11px] text-slate-400">
@@ -1041,6 +1088,13 @@ export default function UserMobileApp({
                             </p>
                           )}
 
+                          {isUploading && (
+                            <div className="space-y-1" aria-live="polite">
+                              <div className="flex justify-between text-[10px] text-slate-400"><span>Uploading photo & running road-damage detection</span><span>{uploadProgress}%</span></div>
+                              <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400 transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                            </div>
+                          )}
+
                           {/* EXPLICIT UPLOAD BUTTON - ONLY UPLOADS WHEN USER CLICKS THIS */}
                           <button
                             onClick={handleQuickUpload}
@@ -1050,7 +1104,7 @@ export default function UserMobileApp({
                             {isUploading ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                                <span>Uploading & Snapping to Road...</span>
+                                <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Validating road photo & detecting damage...'}</span>
                               </>
                             ) : (
                               <>
@@ -1245,22 +1299,21 @@ export default function UserMobileApp({
                   </div>
 
                   <div className="space-y-2.5">
-                    {[
-                      { id: 'REP-01', type: 'Pothole', sector: 'Sector 17', status: 'Under Review', score: '32/100', color: 'text-rose-400' },
-                      { id: 'REP-02', type: 'Crack Propagation', sector: 'Sector 22', status: 'Work Scheduled', score: '58/100', color: 'text-amber-400' },
-                      { id: 'REP-03', type: 'Resurfacing Patch', sector: 'Sector 34', status: 'Verified Fixed', score: '82/100', color: 'text-emerald-400' },
-                    ].map(r => (
-                      <div key={r.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).map(r => {
+                      const damage = r.detections?.[0] || {};
+                      return (
+                      <div key={r.report_id || r.observation_id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-bold text-white">{r.type}</p>
-                          <p className="text-[10px] text-slate-400">{r.sector} • ID: {r.id}</p>
-                          <span className="text-[10px] font-semibold text-emerald-400 mt-1 block">{r.status}</span>
+                          <p className="text-xs font-bold text-white">{damage.class_name || 'Road hazard'}</p>
+                          <p className="text-[10px] text-slate-400">{r.sector || 'Field location'} • ID: {r.report_id || r.observation_id}</p>
+                          <span className="text-[10px] font-semibold text-emerald-400 mt-1 block">{r.report_status === 'accepted' ? 'Accepted for review' : 'Under Review'}</span>
                         </div>
                         <div className="text-right">
-                          <p className={`text-xs font-bold ${r.color}`}>HS: {r.score}</p>
+                          <p className="text-xs font-bold text-amber-400">{(damage.severity || 'medium').toUpperCase()}</p>
                         </div>
                       </div>
-                    ))}
+                    )})}
+                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).length === 0 && <p className="p-5 text-center text-xs text-slate-500">No submitted reports yet. Capture a road photo to start one.</p>}
                   </div>
                 </div>
               )}
@@ -1345,4 +1398,3 @@ export default function UserMobileApp({
     </div>
   );
 }
-

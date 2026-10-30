@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import hashlib
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, List
@@ -12,6 +13,7 @@ from app.database.mongodb import db_manager
 from app.services.mock_store import mock_store
 from app.services.ai_bridge import ai_bridge
 from app.services.gps_snapping import snap_gps_to_road_segment
+from app.services.road_photo_validation import validate_road_photo
 
 router = APIRouter(prefix="/observations", tags=["Observations & Ingestion"])
 
@@ -29,6 +31,8 @@ async def upload_observation(
     altitude: Optional[float] = Form(None),
     speed_kmph: Optional[float] = Form(None),
     telemetry_z_shock: Optional[float] = Form(0.0),
+    captured_at: Optional[str] = Form(None),
+    report_id: Optional[str] = Form(None),
 ):
     """
     Accepts road camera frame & GPS telemetry from inspection vehicles or mobile apps.
@@ -36,6 +40,25 @@ async def upload_observation(
     Chandigarh road segment, generates an annotated image, and persists the record.
     """
     try:
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GPS coordinates are invalid.")
+        report_id = (report_id or "").strip() or f"RPT-{uuid.uuid4().hex.upper()}"
+        if len(report_id) > 128:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Report identifier is invalid.")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            captured_iso = datetime.fromisoformat((captured_at or now_iso).replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Capture timestamp is invalid.")
+
+        # Fast idempotency check avoids writing a second image or rerunning YOLO.
+        if db_manager.is_connected and db_manager.db is not None:
+            existing = await db_manager.db.observations.find_one({"report_id": report_id}, {"_id": 0})
+        else:
+            existing = next((o for o in mock_store.observations if o.get("report_id") == report_id), None)
+        if existing:
+            return {"success": True, "duplicate": True, "message": "This report was already received.", "data": existing}
+
         obs_id = f"OBS-CHD-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
         file_ext = Path(file.filename).suffix or ".jpg"
         saved_filename = f"{obs_id}{file_ext}"
@@ -46,6 +69,25 @@ async def upload_observation(
         with open(saved_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        accepted, validation_error = validate_road_photo(saved_file_path, file.content_type, file.filename)
+        if not accepted:
+            saved_file_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=validation_error)
+
+        image_sha256 = hashlib.sha256(saved_file_path.read_bytes()).hexdigest()
+        # Same photo + capture time + reporter is a duplicate even if a client loses
+        # its report id between retries.
+        deduplication_key = hashlib.sha256(
+            f"{vehicle_id}|{captured_at or ''}|{image_sha256}".encode("utf-8")
+        ).hexdigest()
+        if db_manager.is_connected and db_manager.db is not None:
+            duplicate = await db_manager.db.observations.find_one({"deduplication_key": deduplication_key}, {"_id": 0})
+        else:
+            duplicate = next((o for o in mock_store.observations if o.get("deduplication_key") == deduplication_key), None)
+        if duplicate:
+            saved_file_path.unlink(missing_ok=True)
+            return {"success": True, "duplicate": True, "message": "This photo has already been reported.", "data": duplicate}
+
         image_url = f"/uploads/{saved_filename}"
         annotated_image_url = f"/uploads/{annotated_filename}"
 
@@ -54,6 +96,13 @@ async def upload_observation(
             str(saved_file_path),
             annotate_output_path=str(annotated_file_path)
         )
+        if not raw_detections:
+            annotated_file_path.unlink(missing_ok=True)
+            saved_file_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="This image could not be validated as a road photo. Please capture the road surface again."
+            )
 
         parsed_detections: List[dict] = []
         for d in raw_detections:
@@ -88,10 +137,16 @@ async def upload_observation(
             matched_road_name = f"{matched_sector} (Live GPS Report)"
             snapping_distance = snap_result.get("distance_meters")
 
-        now_iso = datetime.now(timezone.utc).isoformat()
         # 3. Create observation record
         observation_record = {
             "observation_id": obs_id,
+            "report_id": report_id,
+            "report_status": "accepted",
+            "report_source": "citizen" if vehicle_id.startswith("MOB-") or vehicle_id.startswith("CITIZEN-") else "survey",
+            "road_photo_validated": True,
+            "road_validation_engine": "YOLO road-damage detector",
+            "deduplication_key": deduplication_key,
+            "image_sha256": image_sha256,
             "vehicle_id": vehicle_id,
             "location": {"type": "Point", "coordinates": [longitude, latitude]},
             "altitude": altitude or 340.0,
@@ -105,14 +160,24 @@ async def upload_observation(
             "matched_road_name": matched_road_name,
             "sector": matched_sector,
             "snapping_distance_meters": snapping_distance,
-            "captured_at": now_iso,
+            "captured_at": captured_iso,
             "created_at": now_iso,
             "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
         }
 
         # 4. Store in MongoDB or in-memory store
         if db_manager.is_connected and db_manager.db is not None:
-            await db_manager.db.observations.insert_one(observation_record)
+            try:
+                await db_manager.db.observations.insert_one(observation_record)
+            except Exception as exc:
+                # A concurrent retry can win the unique index race.
+                existing = await db_manager.db.observations.find_one(
+                    {"$or": [{"report_id": report_id}, {"deduplication_key": deduplication_key}]}, {"_id": 0}
+                )
+                if existing:
+                    saved_file_path.unlink(missing_ok=True)
+                    return {"success": True, "duplicate": True, "message": "This report was already received.", "data": existing}
+                raise exc
             if linked_segment_id:
                 # Increment hazard count on the matched segment
                 await db_manager.db.road_segments.update_one(
@@ -121,6 +186,8 @@ async def upload_observation(
                 )
         else:
             mock_store.observations.insert(0, observation_record)
+            mock_store.report_ids.add(report_id)
+            mock_store.deduplication_keys.add(deduplication_key)
             if linked_segment_id:
                 for s in mock_store.road_segments:
                     if s["segment_id"] == linked_segment_id:
@@ -134,6 +201,8 @@ async def upload_observation(
             "data": observation_record
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

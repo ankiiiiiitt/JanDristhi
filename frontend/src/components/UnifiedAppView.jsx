@@ -1164,7 +1164,30 @@ export default function UnifiedAppView({
         {/* ───────────────────────────────────────────────────────────
             VIEW 6: GIS / OTHER TABS
            ─────────────────────────────────────────────────────────── */}
-        {['gis', 'reports', 'vehicles', 'settings'].includes(activeNav) && (
+        {activeNav === 'gis' && (
+          <div className="p-6 max-w-6xl w-full mx-auto space-y-4">
+            <div><h3 className="text-lg font-bold text-white">Accepted reports on GIS</h3><p className="text-xs text-slate-400">Citizen reports appear as cyan pins alongside verified inspection detections.</p></div>
+            <div className="h-[620px] rounded-2xl overflow-hidden border border-slate-800"><RoadMap geojson={roadsGeoJson} observations={observations} height="100%" /></div>
+          </div>
+        )}
+
+        {activeNav === 'reports' && (
+          <div className="p-6 max-w-6xl w-full mx-auto space-y-4">
+            <div className="flex items-end justify-between"><div><h3 className="text-lg font-bold text-white">Citizen photo reports</h3><p className="text-xs text-slate-400">Accepted submissions with GPS, capture time, image evidence, and YOLO findings.</p></div><button onClick={onRefresh} className="text-xs px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">Refresh</button></div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen').map(report => {
+                const detection = report.detections?.[0] || {};
+                return <div key={report.report_id || report.observation_id} className="p-4 rounded-xl bg-slate-900 border border-emerald-500/20 flex gap-3">
+                  <img src={report.annotated_image_url || report.image_url} alt="Citizen road report" className="w-24 h-20 rounded-lg object-cover bg-slate-800" />
+                  <div className="min-w-0 text-xs"><p className="font-bold text-white">{detection.class_name || 'Road hazard'} <span className="text-emerald-400">• Accepted</span></p><p className="text-slate-400 truncate">{report.matched_road_name || report.sector || 'GPS field location'}</p><p className="text-slate-400">{new Date(report.captured_at).toLocaleString()}</p><p className="font-mono text-[10px] text-slate-500 truncate">{report.report_id || report.observation_id}</p><p className="text-amber-400 mt-1">{(detection.severity || 'medium').toUpperCase()} • {Math.round((detection.confidence || 0) * 100)}% confidence</p></div>
+                </div>;
+              })}
+              {observations.filter(o => o.report_status === 'accepted' || o.report_source === 'citizen').length === 0 && <div className="md:col-span-2 p-8 rounded-xl bg-slate-900 border border-slate-800 text-center text-xs text-slate-500">No accepted citizen photo reports yet.</div>}
+            </div>
+          </div>
+        )}
+
+        {['vehicles', 'settings'].includes(activeNav) && (
           <div className="p-6 max-w-6xl w-full mx-auto space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
