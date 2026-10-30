@@ -1,0 +1,27 @@
+services:
+  # ─── JanDrishti Backend ─────────────────────────────────────
+  - type: web
+    name: jandrishti-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGODB_URI
+        sync: false        # Set in Render dashboard → your MongoDB Atlas URI
+      - key: MONGODB_DB_NAME
+        value: jandrishti_prod
+      - key: MOCK_MODE
+        value: "false"
+      - key: UPLOAD_STORAGE_DIR
+        value: /tmp/uploads
+      - key: LOG_LEVEL
+        value: info
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BACKEND_CORS_ORIGINS
+        sync: false        # Set to your Vercel frontend URL after deploying frontend
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
