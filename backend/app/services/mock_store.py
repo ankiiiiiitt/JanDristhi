@@ -73,6 +73,7 @@ class MockDataStore:
 
         # Load repair records
         self.repair_records: List[Dict[str, Any]] = self._load_chandigarh_repairs()
+        self.video_inspections: List[Dict[str, Any]] = []
 
         # Initial Risk Assessments
         self.risk_assessments: List[Dict[str, Any]] = [

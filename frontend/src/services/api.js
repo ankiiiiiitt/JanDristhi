@@ -104,13 +104,55 @@ export function uploadObservation(formData, { onProgress } = {}) {
       const body = request.response || (() => { try { return JSON.parse(request.responseText); } catch { return {}; } })();
       if (request.status >= 200 && request.status < 300 && body.success) {
         if (onProgress) onProgress(100);
-        resolve({ success: true, duplicate: Boolean(body.duplicate), message: body.message, data: body.data });
+        resolve({
+          success: true,
+          duplicate: Boolean(body.duplicate),
+          message: body.message,
+          data: body.data,
+          inspection_summary: body.inspection_summary
+        });
         return;
       }
       reject(new Error(body.detail || body.error?.message || `Upload failed (${request.status}).`));
     };
     request.send(formData);
   });
+}
+
+export async function createRepair(repairData) {
+  try {
+    const res = await fetch(`${BASE_URL}/repairs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(repairData)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create repair task.');
+  } catch (e) {
+    console.error('createRepair error:', e);
+    throw e;
+  }
+}
+
+export async function updateRepair(repairId, updateData) {
+  try {
+    const res = await fetch(`${BASE_URL}/repairs/${repairId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateData)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update repair task.');
+  } catch (e) {
+    console.error('updateRepair error:', e);
+    throw e;
+  }
 }
 
 export async function fetchRepairs(filters = {}) {

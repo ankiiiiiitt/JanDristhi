@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { X, Upload, Camera, AlertCircle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
-import { uploadObservation } from '../services/api';
+import { X, Upload, Camera, AlertCircle, CheckCircle2, Loader2, Sparkles, Video } from 'lucide-react';
+import { uploadObservation, resolveImageUrl } from '../services/api';
 
 export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [isVideo, setIsVideo] = useState(false);
   const [vehicleId, setVehicleId] = useState('VEH-CHD-09');
   const [speed, setSpeed] = useState(38.5);
   const [latitude, setLatitude] = useState(30.7412);
   const [longitude, setLongitude] = useState(76.7831);
   const [zShock, setZShock] = useState(3.4);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  const [inspectionSummary, setInspectionSummary] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   if (!isOpen) return null;
 
@@ -19,33 +23,51 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
     const selected = e.target.files[0];
     if (selected) {
       setFile(selected);
+      const isVid = (selected.type && selected.type.startsWith('video/')) || /\.(mp4|webm|mov|avi)$/i.test(selected.name);
+      setIsVideo(isVid);
       setPreview(URL.createObjectURL(selected));
+      setResult(null);
+      setInspectionSummary(null);
+      setErrorMessage(null);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setProgress(0);
     setResult(null);
+    setInspectionSummary(null);
+    setErrorMessage(null);
 
     const formData = new FormData();
     if (file) {
-      formData.append('image', file);
+      formData.append('file', file, file.name);
     }
     formData.append('vehicle_id', vehicleId);
-    formData.append('speed', speed);
+    formData.append('speed_kmph', speed);
     formData.append('latitude', latitude);
     formData.append('longitude', longitude);
-    formData.append('z_shock', zShock);
+    formData.append('telemetry_z_shock', zShock);
+    formData.append('report_id', `RPT-${Date.now()}`);
 
     try {
-      const res = await uploadObservation(formData);
+      const res = await uploadObservation(formData, {
+        onProgress: (p) => setProgress(p)
+      });
       setResult(res.data);
+      if (res.inspection_summary) {
+        setInspectionSummary(res.inspection_summary);
+      }
       if (onUploadSuccess) {
-        onUploadSuccess(res.data);
+        onUploadSuccess({
+          ...res.data,
+          inspection_summary: res.inspection_summary
+        });
       }
     } catch (err) {
-      console.error(err);
+      console.error('Upload modal error:', err);
+      setErrorMessage(err.message || 'Failed to process road footage upload.');
     } finally {
       setLoading(false);
     }
@@ -75,32 +97,65 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
 
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Image Upload Zone */}
+          {/* Footage Upload Zone */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Road Surface Image Frame
+              Road Surface Photo or Recorded Inspection Video
             </label>
             <div className="relative border-2 border-dashed border-emerald-300 hover:border-[#145547] rounded-2xl p-4 text-center cursor-pointer transition-all bg-[#f0f7f4]/50 group">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*,.mp4,.webm,.mov,.avi"
                 onChange={handleFileChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
               {preview ? (
                 <div className="flex flex-col items-center">
-                  <img src={preview} alt="Road Preview" className="h-32 object-cover rounded-xl mb-2 shadow-xs border border-emerald-200" />
-                  <span className="text-xs text-[#145547] font-bold">Click to replace photo</span>
+                  {isVideo ? (
+                    <video
+                      src={preview}
+                      controls
+                      playsInline
+                      className="h-36 w-full object-cover rounded-xl mb-2 shadow-xs border border-emerald-200 bg-black"
+                    />
+                  ) : (
+                    <img
+                      src={preview}
+                      alt="Road Preview"
+                      className="h-32 object-cover rounded-xl mb-2 shadow-xs border border-emerald-200"
+                    />
+                  )}
+                  <span className="text-xs text-[#145547] font-bold">
+                    {isVideo ? '🎥 Road Inspection Video Selected • Click to replace' : '📸 Road Photo Selected • Click to replace'}
+                  </span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center py-2 text-slate-500">
                   <Upload className="h-8 w-8 text-[#145547] mb-1.5 transition-transform group-hover:-translate-y-0.5" />
-                  <span className="text-xs font-bold text-slate-800">Drag & drop or click to upload road photo</span>
-                  <span className="text-[11px] text-slate-500 mt-0.5">JPEG / PNG from dashcam or mobile inspection</span>
+                  <span className="text-xs font-bold text-slate-800">Drag & drop or click to upload road footage</span>
+                  <span className="text-[11px] text-slate-500 mt-0.5">MP4 / WebM video or JPG / PNG from dashcam or phone</span>
                 </div>
               )}
             </div>
           </div>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              {errorMessage}
+            </div>
+          )}
+
+          {loading && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                <span>{isVideo ? 'Uploading video & extracting frames with OpenCV...' : 'Uploading road photo & running YOLOv8 detection...'}</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full bg-[#145547] transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          )}
 
           {/* Telemetry Inputs */}
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -170,15 +225,38 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
                 </span>
               </div>
 
+              {/* Video Inspection Summary if video was processed */}
+              {inspectionSummary && (
+                <div className="p-3 rounded-xl bg-white border border-emerald-200/90 text-[11px] space-y-1.5 shadow-xs">
+                  <div className="flex justify-between items-center font-bold">
+                    <span className="text-slate-800">Infrastructure Health Score (IHS):</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#145547] border border-emerald-200 font-mono">
+                      {inspectionSummary.health_score}/100 ({inspectionSummary.risk_level?.toUpperCase()})
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>OpenCV Frames Analyzed:</span>
+                    <span className="font-bold text-slate-900">{inspectionSummary.frames_processed} frames</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Defects Identified:</span>
+                    <span className="font-bold text-rose-600">{inspectionSummary.potholes_count} Potholes • {inspectionSummary.cracks_count} Cracks</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-100">
+                    Recommended Action: <strong className="text-slate-800">{inspectionSummary.recommended_action}</strong>
+                  </div>
+                </div>
+              )}
+
               {/* Annotated Image & BBox View */}
               {(result.annotated_image_url || result.image_url) && (
                 <div className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-xs">
                   <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1.5 bg-slate-50 flex justify-between border-b border-slate-100">
-                    <span>Annotated Road Damage Frame</span>
+                    <span>{inspectionSummary ? "OpenCV Video Keyframe • YOLOv8 Annotation" : "Annotated Road Damage Frame"}</span>
                     <span className="text-[#145547] font-bold">RDD2022 Verified</span>
                   </div>
                   <img
-                    src={result.annotated_image_url || result.image_url}
+                    src={resolveImageUrl(result.annotated_image_url || result.image_url)}
                     alt="Annotated Road Detection"
                     className="w-full max-h-48 object-cover"
                   />

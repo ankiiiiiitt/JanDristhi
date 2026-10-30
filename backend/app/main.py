@@ -54,9 +54,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount uploads directory for static image serving
+# Mount uploads directory for static image & video serving
 uploads_path = Path(settings.UPLOAD_STORAGE_DIR)
 uploads_path.mkdir(parents=True, exist_ok=True)
+(uploads_path / "videos").mkdir(parents=True, exist_ok=True)
+(uploads_path / "extracted_frames").mkdir(parents=True, exist_ok=True)
+(uploads_path / "collector").mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 # Include Routers under API_PREFIX

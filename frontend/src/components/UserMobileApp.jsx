@@ -39,10 +39,12 @@ import {
   Loader2,
   X,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Video,
+  Film
 } from 'lucide-react';
 import RoadMap from './RoadMap';
-import { uploadObservation } from '../services/api';
+import { uploadObservation, resolveImageUrl } from '../services/api';
 
 export default function UserMobileApp({
   overview,
@@ -114,9 +116,14 @@ export default function UserMobileApp({
   });
   const [isLocatingDevice, setIsLocatingDevice] = useState(false);
 
-  // Real Captured Photo Blob and Preview for direct posting
+  // Real Captured Photo or Video Blob and Preview for direct posting
   const [capturedBlob, setCapturedBlob] = useState(null);
   const [capturedPreview, setCapturedPreview] = useState(null);
+  const [isVideoCaptured, setIsVideoCaptured] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [expandedReportId, setExpandedReportId] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
   const [lockedCoords, setLockedCoords] = useState(null);
   const [captureTimestamp, setCaptureTimestamp] = useState(null);
   const [reportId, setReportId] = useState(null);
@@ -327,6 +334,9 @@ export default function UserMobileApp({
   const handleRetake = () => {
     setCapturedBlob(null);
     setCapturedPreview(null);
+    setIsVideoCaptured(false);
+    setVideoDuration(0);
+    recordedChunksRef.current = [];
     setLockedCoords(null);
     setCaptureTimestamp(null);
     setReportId(null);
@@ -342,6 +352,9 @@ export default function UserMobileApp({
   const handleCancel = () => {
     setCapturedBlob(null);
     setCapturedPreview(null);
+    setIsVideoCaptured(false);
+    setVideoDuration(0);
+    recordedChunksRef.current = [];
     setLockedCoords(null);
     setCaptureTimestamp(null);
     setReportId(null);
@@ -358,10 +371,15 @@ export default function UserMobileApp({
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+    setIsVideoCaptured(isVideo);
     const preview = URL.createObjectURL(file);
     const nowIso = new Date().toISOString();
     setCaptureTimestamp(nowIso);
-    setReportId(`RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
+    setReportId(isVideo
+      ? `RPT-VID-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID().slice(0, 8).toUpperCase() : `${Date.now()}`}`
+      : `RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID().slice(0, 8).toUpperCase() : `${Date.now()}`}`
+    );
     setLockedCoords({
       lat: userCoords.lat,
       lng: userCoords.lng,
@@ -384,52 +402,97 @@ export default function UserMobileApp({
       return;
     }
 
+    // VIDEO MODE
     if (isRecording) {
-      // Capture the current frame from live video
-      if (userVideoRef.current && (userVideoRef.current.videoWidth > 0 || userVideoRef.current.readyState >= 2)) {
+      // User tapped Stop Recording button
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try {
-          const video = userVideoRef.current;
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth || 1280;
-          canvas.height = video.videoHeight || 720;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-          setCapturedPreview(dataUrl);
-          canvas.toBlob((blob) => setCapturedBlob(blob), 'image/jpeg', 0.92);
+          mediaRecorderRef.current.stop();
         } catch (e) {
-          console.warn('Video frame capture error:', e);
+          console.warn('Error stopping mediaRecorder:', e);
         }
       }
-      stopCamera();
       setIsRecording(false);
-      setRecordingSaved(true);
-      setPhotoCaptured(true);
-      const timestamp = new Date().toISOString();
-      setCaptureTimestamp(timestamp);
-      setReportId(`RPT-MOB-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
-      setLockedCoords({
-        lat: userCoords.lat,
-        lng: userCoords.lng,
-        accuracy: userCoords.accuracy,
-        city: userCoords.city,
-        isReal: userCoords.isReal
-      });
-      setUploadSuccessData(null);
-      setUploadError(null);
       return;
     }
 
-    // Reset and start recording
-    setRecordingSeconds(0);
-    setRecordingSaved(false);
-    setPhotoCaptured(false);
-    setCapturedBlob(null);
-    setCapturedPreview(null);
-    setUploadSuccessData(null);
-    setUploadError(null);
-    setIsRecording(true);
-    startRearCamera();
+    // Start Real MediaRecorder Video Recording
+    try {
+      let stream = cameraStreamRef.current || cameraStream;
+      if (!stream || !stream.active) {
+        await startRearCamera();
+        stream = cameraStreamRef.current;
+      }
+
+      if (!stream) {
+        if (fileInputRef.current) {
+          fileInputRef.current.accept = 'video/*,image/*';
+          fileInputRef.current.click();
+        }
+        return;
+      }
+
+      recordedChunksRef.current = [];
+      let mimeType = '';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+          mimeType = 'video/webm;codecs=vp9,opus';
+        } else if (MediaRecorder.isTypeSupported('video/webm')) {
+          mimeType = 'video/webm';
+        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+          mimeType = 'video/mp4';
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const chunks = recordedChunksRef.current;
+        const finalBlob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        const videoUrl = URL.createObjectURL(finalBlob);
+
+        setCapturedBlob(finalBlob);
+        setCapturedPreview(videoUrl);
+        setIsVideoCaptured(true);
+        setRecordingSaved(true);
+        setPhotoCaptured(true);
+        stopCamera();
+
+        const timestamp = new Date().toISOString();
+        setCaptureTimestamp(timestamp);
+        setReportId(`RPT-VID-${globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID().slice(0, 8).toUpperCase() : `${Date.now()}`}`);
+        setLockedCoords({
+          lat: userCoords.lat,
+          lng: userCoords.lng,
+          accuracy: userCoords.accuracy,
+          city: userCoords.city,
+          isReal: userCoords.isReal
+        });
+        setUploadSuccessData(null);
+        setUploadError(null);
+      };
+
+      recorder.start(500); // 500ms chunk intervals
+      mediaRecorderRef.current = recorder;
+      setRecordingSeconds(0);
+      setRecordingSaved(false);
+      setPhotoCaptured(false);
+      setCapturedBlob(null);
+      setCapturedPreview(null);
+      setIsVideoCaptured(false);
+      setIsRecording(true);
+    } catch (err) {
+      console.warn('Failed to start MediaRecorder, falling back to file upload:', err);
+      if (fileInputRef.current) {
+        fileInputRef.current.accept = 'video/*,image/*';
+        fileInputRef.current.click();
+      }
+    }
   };
 
   const handleQuickUpload = async () => {
@@ -447,8 +510,13 @@ export default function UserMobileApp({
           console.warn('Could not convert capturedPreview to blob:', e);
         }
       }
-      if (!blobToUpload) throw new Error('No photo is available. Please retake the road photo.');
-      formData.append('file', blobToUpload, 'road_hazard_recording.jpg');
+      if (!blobToUpload) throw new Error('No inspection footage available. Please retake the road photo or video.');
+
+      const fileName = isVideoCaptured
+        ? (blobToUpload.name || 'road_inspection_video.webm')
+        : (blobToUpload.name || 'road_hazard_recording.jpg');
+
+      formData.append('file', blobToUpload, fileName);
       formData.append('vehicle_id', currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB');
 
       const activeCoords = lockedCoords || userCoords;
@@ -463,31 +531,38 @@ export default function UserMobileApp({
       formData.append('speed_kmph', '34.5');
       formData.append('telemetry_z_shock', '3.1');
       formData.append('captured_at', exactTime);
-      formData.append('report_id', reportId || `RPT-MOB-${Date.now()}`);
+      formData.append('report_id', reportId || `RPT-${Date.now()}`);
 
       const res = await uploadObservation(formData, { onProgress: setUploadProgress });
 
-      const generatedObsId = res.data.observation_id;
+      const obsData = res.data || {};
+      const inspectionSummary = res.inspection_summary || null;
+
       const enrichedObs = {
-        observation_id: generatedObsId,
-        vehicle_id: currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB',
-        location: {
+        observation_id: obsData.observation_id || `OBS-${Date.now()}`,
+        report_id: obsData.report_id || reportId,
+        vehicle_id: obsData.vehicle_id || (currentUser?.phone ? `MOB-${currentUser.phone.slice(-4)}` : 'CITIZEN-MOB'),
+        report_source: obsData.report_source || 'citizen',
+        report_status: obsData.report_status || 'accepted',
+        location: obsData.location || {
           type: 'Point',
           coordinates: [Number(finalLng), Number(finalLat)]
         },
         latitude: Number(finalLat),
         longitude: Number(finalLng),
-        sector: finalSector,
-        report_id: res.data.report_id,
-        report_status: res.data.report_status,
-        matched_road_name: res.data.matched_road_name || `${finalSector} (Live User Report)`,
-        image_url: res.data.image_url,
-        preview_url: capturedPreview || res.data.image_url,
-        detections: res.data.detections || [],
-        telemetry_z_shock: 3.1,
-        captured_at: res.data.captured_at || exactTime,
-        created_at: res.data.created_at || exactTime,
-        duplicate: res.duplicate
+        sector: obsData.sector || finalSector,
+        matched_road_name: obsData.matched_road_name || `${finalSector} (Live User Report)`,
+        image_url: obsData.image_url,
+        annotated_image_url: obsData.annotated_image_url || obsData.image_url,
+        video_url: obsData.video_url || (isVideoCaptured ? capturedPreview : null),
+        preview_url: capturedPreview || obsData.annotated_image_url || obsData.image_url,
+        detections: obsData.detections || [],
+        telemetry_z_shock: obsData.telemetry_z_shock || 3.1,
+        captured_at: obsData.captured_at || exactTime,
+        created_at: obsData.created_at || exactTime,
+        duplicate: res.duplicate,
+        inspection_summary: inspectionSummary,
+        isVideo: isVideoCaptured
       };
 
       setUploadSuccessData(enrichedObs);
@@ -496,7 +571,7 @@ export default function UserMobileApp({
       }
     } catch (err) {
       console.error('Quick upload error:', err);
-      setUploadError(err.message || 'Network error uploading hazard');
+      setUploadError(err.message || 'Failed to analyze and upload road inspection.');
     } finally {
       setIsUploading(false);
     }
@@ -882,16 +957,25 @@ export default function UserMobileApp({
                     )}
 
                     {capturedPreview ? (
-                      /* 1. Captured Photo Preview */
+                      /* 1. Captured Photo or Video Preview */
                       <>
-                        <img
-                          src={capturedPreview}
-                          alt="Captured Road Hazard"
-                          className="w-full h-full object-cover"
-                        />
+                        {isVideoCaptured ? (
+                          <video
+                            src={capturedPreview}
+                            controls
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={capturedPreview}
+                            alt="Captured Road Hazard"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                         <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 text-[#145547] text-[10px] font-bold flex items-center space-x-1 shadow-md border border-emerald-200 backdrop-blur z-20">
                           <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
-                          <span>Photo Captured • Ready to Review</span>
+                          <span>{isVideoCaptured ? '🎥 Video Inspection Recorded' : '📸 Photo Captured • Ready to Review'}</span>
                         </div>
                       </>
                     ) : cameraStream ? (
@@ -980,7 +1064,7 @@ export default function UserMobileApp({
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept="image/*"
+                    accept={recordMode === 'video' ? 'video/*,image/*' : 'image/*,video/*'}
                     capture="environment"
                     className="hidden"
                     onChange={handleFileSelect}
@@ -1017,7 +1101,7 @@ export default function UserMobileApp({
                         <div className="bg-white border border-emerald-200 rounded-2xl p-4 text-center space-y-3 shadow-md">
                           <div className="inline-flex items-center space-x-1.5 text-[#145547] font-bold text-xs bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                             <CheckCircle2 className="w-4 h-4 text-[#145547]" />
-                            <span>Road Hazard Uploaded & Logged!</span>
+                            <span>{uploadSuccessData.inspection_summary ? '🎥 Video Inspection Analyzed & Logged!' : 'Road Hazard Uploaded & Logged!'}</span>
                           </div>
 
                           <p className="text-xs text-slate-700 font-semibold">
@@ -1028,7 +1112,32 @@ export default function UserMobileApp({
                             📍 {uploadSuccessData.matched_road_name || 'Madhya Marg (Sector 17)'}
                           </p>
 
-                          {uploadSuccessData.preview_url && (
+                          {/* Video Inspection Summary Card if available */}
+                          {uploadSuccessData.inspection_summary && (
+                            <div className="bg-[#f0f7f4] border border-emerald-200/90 rounded-xl p-3 text-left text-[11px] space-y-1.5 shadow-xs">
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="text-slate-800">Infrastructure Health Score:</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#145547] font-mono">
+                                  {uploadSuccessData.inspection_summary.health_score}/100 ({uploadSuccessData.inspection_summary.risk_level?.toUpperCase()})
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-slate-600">
+                                <span>OpenCV Extracted Frames:</span>
+                                <span className="font-bold text-slate-900">{uploadSuccessData.inspection_summary.frames_processed} frames</span>
+                              </div>
+                              <div className="flex justify-between text-slate-600">
+                                <span>Detected Road Defects:</span>
+                                <span className="font-bold text-rose-600">
+                                  {uploadSuccessData.inspection_summary.potholes_count} Potholes • {uploadSuccessData.inspection_summary.cracks_count} Cracks
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 pt-1 border-t border-emerald-200/60">
+                                Recommended Action: <b className="text-slate-800">{uploadSuccessData.inspection_summary.recommended_action}</b>
+                              </div>
+                            </div>
+                          )}
+
+                          {uploadSuccessData.preview_url && !uploadSuccessData.isVideo && (
                             <div className="w-28 h-20 mx-auto rounded-xl overflow-hidden border border-slate-200 shadow-xs">
                               <img src={uploadSuccessData.preview_url} alt="Uploaded" className="w-full h-full object-cover" />
                             </div>
@@ -1047,7 +1156,7 @@ export default function UserMobileApp({
                               className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center space-x-1 shadow-xs"
                             >
                               <Camera className="w-3.5 h-3.5" />
-                              <span>Snap New</span>
+                              <span>Inspect New</span>
                             </button>
                           </div>
                         </div>
@@ -1056,10 +1165,10 @@ export default function UserMobileApp({
                           <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
                             <div className="flex items-center space-x-1.5 text-[#145547] font-bold">
                               <CheckCircle2 className="w-4 h-4" />
-                              <span>Photo Ready to Upload</span>
+                              <span>{isVideoCaptured ? 'Road Inspection Video Ready' : 'Photo Ready to Upload'}</span>
                             </div>
                             <span className="text-[10px] bg-emerald-50 text-[#145547] px-2 py-0.5 rounded-full font-bold border border-emerald-200">
-                              GPS Tagged
+                              {isVideoCaptured ? 'OpenCV / YOLO' : 'GPS Tagged'}
                             </span>
                           </div>
 
@@ -1090,7 +1199,10 @@ export default function UserMobileApp({
 
                           {isUploading && (
                             <div className="space-y-1" aria-live="polite">
-                              <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>Uploading photo & running road-damage detection</span><span>{uploadProgress}%</span></div>
+                              <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                                <span>{isVideoCaptured ? 'Uploading video & extracting frames with OpenCV...' : 'Uploading photo & running road-damage detection...'}</span>
+                                <span>{uploadProgress}%</span>
+                              </div>
                               <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-[#145547] transition-all" style={{ width: `${uploadProgress}%` }} /></div>
                             </div>
                           )}
@@ -1104,12 +1216,12 @@ export default function UserMobileApp({
                             {isUploading ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin text-white" />
-                                <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Validating road photo & detecting damage...'}</span>
+                                <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : (isVideoCaptured ? 'Extracting frames & running YOLOv8...' : 'Validating road photo & detecting damage...')}</span>
                               </>
                             ) : (
                               <>
                                 <UploadCloud className="w-4 h-4 text-white" />
-                                <span>Upload & Log Hazard to JanDrishti</span>
+                                <span>{isVideoCaptured ? 'Upload & Run AI Video Inspection' : 'Upload & Log Hazard to JanDrishti'}</span>
                               </>
                             )}
                           </button>
@@ -1299,21 +1411,123 @@ export default function UserMobileApp({
                   </div>
 
                   <div className="space-y-2.5">
-                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).map(r => {
+                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).map(r => {
                       const damage = r.detections?.[0] || {};
+                      const isVid = Boolean(r.video_url || r.video_id);
+                      const keyId = r.report_id || r.observation_id;
+                      const isExpanded = expandedReportId === keyId;
+                      const imgUrl = resolveImageUrl(r.annotated_image_url || r.image_url);
+                      const vidUrl = r.video_url ? resolveImageUrl(r.video_url) : null;
+
                       return (
-                      <div key={r.report_id || r.observation_id} className="p-3 rounded-xl bg-white border border-slate-200/90 flex items-center justify-between shadow-xs hover:border-slate-300 transition-colors">
-                        <div>
-                          <p className="text-xs font-bold text-slate-900">{damage.class_name || 'Road hazard'}</p>
-                          <p className="text-[10px] text-slate-500">{r.sector || 'Field location'} • ID: {r.report_id || r.observation_id}</p>
-                          <span className="text-[10px] font-semibold text-[#145547] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1 inline-block">{r.report_status === 'accepted' ? 'Accepted for review' : 'Under Review'}</span>
+                      <div key={keyId} className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all">
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start space-x-2.5 min-w-0">
+                            {imgUrl ? (
+                              <img
+                                src={imgUrl}
+                                alt="Report Thumbnail"
+                                className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                                onError={(e) => { e.target.onerror = null; e.target.src = '/images/roads/road_pothole_d00.jpg'; }}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-400">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center space-x-1.5 flex-wrap">
+                                <p className="text-xs font-bold text-slate-900 truncate">
+                                  {damage.class_name ? `${damage.class_name} (${damage.class_id || 'RDD'})` : (isVid ? 'Road Video Inspection' : 'Road Surface Hazard')}
+                                </p>
+                                {isVid && (
+                                  <span className="text-[9px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-200 inline-flex items-center space-x-0.5">
+                                    <Video className="w-2.5 h-2.5" />
+                                    <span>Video</span>
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-500 truncate">{r.matched_road_name || r.sector || 'Field location'} • {new Date(r.captured_at || r.created_at || Date.now()).toLocaleTimeString()}</p>
+                              <div className="flex items-center space-x-1 mt-1">
+                                <span className="text-[9px] font-semibold text-[#145547] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                  {r.report_status === 'accepted' ? 'Accepted & Geotagged' : 'Processed'}
+                                </span>
+                                {damage.severity && (
+                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
+                                    {String(damage.severity).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => setExpandedReportId(isExpanded ? null : keyId)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-50 shrink-0"
+                            title={isExpanded ? 'Collapse' : 'Expand Details'}
+                          >
+                            {isExpanded ? <ChevronLeft className="w-4 h-4 rotate-90" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">{(damage.severity || 'medium').toUpperCase()}</span>
-                        </div>
+
+                        {/* Expandable Details Container */}
+                        {isExpanded && (
+                          <div className="mt-3 pt-3 border-t border-slate-100 text-xs space-y-2 animate-in fade-in duration-150">
+                            {vidUrl && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-600 flex items-center space-x-1">
+                                  <Video className="w-3 h-3 text-purple-600" />
+                                  <span>Recorded Inspection Video:</span>
+                                </span>
+                                <video
+                                  src={vidUrl}
+                                  controls
+                                  playsInline
+                                  className="w-full h-40 rounded-xl bg-black object-cover shadow-xs border border-slate-200"
+                                />
+                              </div>
+                            )}
+
+                            {r.annotated_image_url && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-600 flex items-center space-x-1">
+                                  <Sparkles className="w-3 h-3 text-[#145547]" />
+                                  <span>YOLOv8 Detection Annotation:</span>
+                                </span>
+                                <img
+                                  src={resolveImageUrl(r.annotated_image_url)}
+                                  alt="YOLO Annotation"
+                                  className="w-full h-40 rounded-xl object-cover shadow-xs border border-slate-200"
+                                />
+                              </div>
+                            )}
+
+                            {/* Telemetry & Detection Meta */}
+                            <div className="bg-[#f0f7f4] p-2.5 rounded-xl border border-emerald-100 text-[10px] space-y-1">
+                              <p className="text-slate-700">
+                                <b>GPS Snapped Road:</b> {r.matched_road_name || 'Chandigarh Urban Network'}
+                              </p>
+                              <p className="text-slate-600 font-mono">
+                                <b>Coordinates:</b> {r.location?.coordinates ? `${r.location.coordinates[1].toFixed(4)}°N, ${r.location.coordinates[0].toFixed(4)}°E` : `${r.latitude || 30.74}°N, ${r.longitude || 76.78}°E`}
+                              </p>
+                              {r.detections && r.detections.length > 0 && (
+                                <p className="text-[#145547] font-semibold">
+                                  <b>Detections ({r.detections.length}):</b> {r.detections.map(d => `${d.class_name} (${Math.round((d.confidence || 0.85)*100)}% conf)`).join(', ')}
+                                </p>
+                              )}
+                              {r.frame_timestamp_ms !== undefined && (
+                                <p className="text-slate-500">
+                                  <b>Frame Offset:</b> {(r.frame_timestamp_ms / 1000).toFixed(1)}s into video inspection
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )})}
-                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-')).length === 0 && <p className="p-5 text-center text-xs text-slate-400">No submitted reports yet. Capture a road photo to start one.</p>}
+                    {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).length === 0 && (
+                      <p className="p-5 text-center text-xs text-slate-400">No submitted reports yet. Capture a road photo or video to start one.</p>
+                    )}
                   </div>
                 </div>
               )}

@@ -56,6 +56,11 @@ INDEX_SPECIFICATIONS = {
         ([("sector", 1), ("created_at", -1)], {"name": "idx_repairs_sector_created_at"}),
         ([("created_at", -1)], {"name": "idx_repairs_created_at"}),
     ],
+    "video_inspections": [
+        ("video_id", {"unique": True}),
+        ("report_id", {}),
+        ([("created_at", -1)], {"name": "idx_videos_created_at"}),
+    ],
 }
 
 class MongoDBManager:

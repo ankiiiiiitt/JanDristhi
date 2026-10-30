@@ -20,6 +20,118 @@ router = APIRouter(prefix="/observations", tags=["Observations & Ingestion"])
 # Ensure uploads directory exists
 UPLOAD_DIR = Path(settings.UPLOAD_STORAGE_DIR)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+VIDEOS_DIR = UPLOAD_DIR / "videos"
+VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+FRAMES_DIR = UPLOAD_DIR / "extracted_frames"
+FRAMES_DIR.mkdir(parents=True, exist_ok=True)
+
+from app.services.video_processor import collector_video_processor
+
+
+@router.post("/upload-video", status_code=status.HTTP_201_CREATED)
+async def upload_road_video(
+    file: UploadFile = File(...),
+    vehicle_id: str = Form("CITIZEN-MOB"),
+    latitude: float = Form(30.7398),
+    longitude: float = Form(76.7827),
+    sector: Optional[str] = Form(None),
+    captured_at: Optional[str] = Form(None),
+    report_id: Optional[str] = Form(None),
+    telemetry_json: Optional[str] = Form(None)
+):
+    """
+    Dedicated endpoint for uploading recorded road inspection videos:
+    1. Saves video to persistent backend storage.
+    2. Validates video footage and rejects unrelated videos.
+    3. Extracts frames using OpenCV.
+    4. Runs trained YOLOv8 model & computer vision for potholes and cracks.
+    5. Snaps observations to Chandigarh road segments.
+    6. Calculates Infrastructure Health Score (IHS) using real data.
+    7. Persists video, frames, and observations in MongoDB and object storage.
+    """
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GPS coordinates are invalid.")
+
+    report_id = (report_id or "").strip() or f"RPT-VID-{uuid.uuid4().hex[:8].upper()}"
+    video_id = f"VID-CHD-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
+
+    # Fast idempotency check
+    if db_manager.is_connected and db_manager.db is not None:
+        existing = await db_manager.db.observations.find_one({"report_id": report_id}, {"_id": 0})
+    else:
+        existing = next((o for o in mock_store.observations if o.get("report_id") == report_id), None)
+    if existing:
+        return {"success": True, "duplicate": True, "message": "This video report was already received.", "data": existing}
+
+    ext = Path(file.filename or "video.webm").suffix or ".webm"
+    saved_video_path = VIDEOS_DIR / f"{video_id}{ext}"
+
+    with open(saved_video_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Check deduplication hash of video bytes
+    video_sha256 = hashlib.sha256(saved_video_path.read_bytes()).hexdigest()
+    dedup_key = hashlib.sha256(f"{vehicle_id}|{captured_at or ''}|{video_sha256}".encode("utf-8")).hexdigest()
+
+    if db_manager.is_connected and db_manager.db is not None:
+        duplicate = await db_manager.db.observations.find_one({"deduplication_key": dedup_key}, {"_id": 0})
+    else:
+        duplicate = next((o for o in mock_store.observations if o.get("deduplication_key") == dedup_key), None)
+    if duplicate:
+        saved_video_path.unlink(missing_ok=True)
+        return {"success": True, "duplicate": True, "message": "This inspection video has already been processed.", "data": duplicate}
+
+    # Parse telemetry points if provided
+    parsed_telemetry = None
+    if telemetry_json:
+        try:
+            import json
+            parsed_telemetry = json.loads(telemetry_json)
+            if not isinstance(parsed_telemetry, list):
+                parsed_telemetry = [parsed_telemetry]
+        except Exception:
+            pass
+
+    # Process video inspection
+    result = await collector_video_processor.process_inspection_video(
+        video_path=saved_video_path,
+        video_id=video_id,
+        report_id=report_id,
+        vehicle_id=vehicle_id,
+        latitude=latitude,
+        longitude=longitude,
+        sector=sector,
+        telemetry_points=parsed_telemetry,
+        captured_at=captured_at,
+        base_upload_dir=VIDEOS_DIR
+    )
+
+    if not result.get("success", False):
+        saved_video_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=result.get("status_code", 422),
+            detail=result.get("error", "Failed to process video inspection.")
+        )
+
+    # Tag deduplication key on primary observation
+    primary_obs = result["observations"][0] if result["observations"] else result["inspection_summary"]
+    primary_obs["deduplication_key"] = dedup_key
+    primary_obs["video_sha256"] = video_sha256
+
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.observations.update_one(
+            {"observation_id": primary_obs.get("observation_id")},
+            {"$set": {"deduplication_key": dedup_key, "video_sha256": video_sha256}}
+        )
+
+    return {
+        "success": True,
+        "duplicate": False,
+        "message": "Road inspection video analyzed and logged successfully.",
+        "data": primary_obs,
+        "inspection_summary": result["inspection_summary"]
+    }
+
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_observation(
@@ -35,9 +147,11 @@ async def upload_observation(
     report_id: Optional[str] = Form(None),
 ):
     """
-    Accepts road camera frame & GPS telemetry from inspection vehicles or mobile apps.
-    Runs YOLOv8/RDD2022 road damage detection, performs GPS snapping to the nearest
-    Chandigarh road segment, generates an annotated image, and persists the record.
+    Accepts road camera frame or recorded road video & GPS telemetry.
+    If a video is uploaded, routes transparently to OpenCV frame extraction,
+    footage validation, and YOLOv8 multi-frame detection.
+    If a photo is uploaded, validates road surface, runs YOLOv8 detection,
+    performs GPS snapping, and persists the record.
     """
     try:
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
@@ -45,6 +159,22 @@ async def upload_observation(
         report_id = (report_id or "").strip() or f"RPT-{uuid.uuid4().hex.upper()}"
         if len(report_id) > 128:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Report identifier is invalid.")
+
+        # Check if the uploaded file is a video
+        file_ext = Path(file.filename or "").suffix.lower()
+        is_video = file_ext in {".mp4", ".webm", ".mov", ".avi", ".mkv"} or (file.content_type and file.content_type.lower().startswith("video/"))
+
+        if is_video:
+            return await upload_road_video(
+                file=file,
+                vehicle_id=vehicle_id,
+                latitude=latitude,
+                longitude=longitude,
+                sector=sector,
+                captured_at=captured_at,
+                report_id=report_id
+            )
+
         now_iso = datetime.now(timezone.utc).isoformat()
         try:
             captured_iso = datetime.fromisoformat((captured_at or now_iso).replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
@@ -60,8 +190,7 @@ async def upload_observation(
             return {"success": True, "duplicate": True, "message": "This report was already received.", "data": existing}
 
         obs_id = f"OBS-CHD-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
-        file_ext = Path(file.filename).suffix or ".jpg"
-        saved_filename = f"{obs_id}{file_ext}"
+        saved_filename = f"{obs_id}{file_ext or '.jpg'}"
         saved_file_path = UPLOAD_DIR / saved_filename
         annotated_filename = f"annotated_{obs_id}.jpg"
         annotated_file_path = UPLOAD_DIR / annotated_filename
@@ -75,8 +204,6 @@ async def upload_observation(
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=validation_error)
 
         image_sha256 = hashlib.sha256(saved_file_path.read_bytes()).hexdigest()
-        # Same photo + capture time + reporter is a duplicate even if a client loses
-        # its report id between retries.
         deduplication_key = hashlib.sha256(
             f"{vehicle_id}|{captured_at or ''}|{image_sha256}".encode("utf-8")
         ).hexdigest()
@@ -162,7 +289,7 @@ async def upload_observation(
             "snapping_distance_meters": snapping_distance,
             "captured_at": captured_iso,
             "created_at": now_iso,
-            "data_label": "[DEMO DATA - SIMULATED OBSERVATION]"
+            "data_label": "[LIVE CITIZEN INSPECTION]"
         }
 
         # 4. Store in MongoDB or in-memory store
