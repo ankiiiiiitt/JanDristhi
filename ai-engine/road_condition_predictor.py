@@ -144,3 +144,4 @@ class RoadConditionPredictor:
 import numpy as np
 
 road_condition_predictor = RoadConditionPredictor()
+

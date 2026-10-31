@@ -10,9 +10,13 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 # Ensure ai-engine is in sys.path
-ai_dir = Path(__file__).resolve().parent.parent.parent.parent / "ai-engine"
-if str(ai_dir) not in sys.path and ai_dir.exists():
-    sys.path.insert(0, str(ai_dir))
+for candidate_ai in [
+    Path(__file__).resolve().parent.parent / "ai_engine",
+    Path(__file__).resolve().parent.parent.parent.parent / "ai-engine",
+    Path("ai-engine")
+]:
+    if candidate_ai.exists() and str(candidate_ai) not in sys.path:
+        sys.path.insert(0, str(candidate_ai))
 
 from road_condition_predictor import road_condition_predictor, RoadConditionPredictor
 
@@ -135,3 +139,4 @@ class RoadConditionService:
 
 
 road_condition_service = RoadConditionService()
+

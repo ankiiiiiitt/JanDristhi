@@ -97,7 +97,70 @@ export default function UserMobileApp({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccessData, setUploadSuccessData] = useState(null);
   const [uploadError, setUploadError] = useState(null);
+  const [clientValidation, setClientValidation] = useState(null);
   const userVideoRef = useRef(null);
+
+  // Fast client-side image sanity check to reject selfies, portraits, and indoor non-road imagery immediately
+  const analyzeClientImage = (source) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const w = 160;
+      const h = 120;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(source, 0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      let skinCount = 0;
+      let rSum = 0;
+      let gSum = 0;
+      let bSum = 0;
+      const totalPixels = w * h;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        rSum += r;
+        gSum += g;
+        bSum += b;
+
+        // Normalized human skin chrominance test
+        if (r > 95 && g > 40 && b > 20 && r > g && g > b && (r - g) > 12 && (r - b) > 15) {
+          skinCount++;
+        }
+      }
+
+      const skinRatio = skinCount / totalPixels;
+      const rMean = rSum / totalPixels;
+      const bMean = bSum / totalPixels;
+      const bRRatio = bMean / Math.max(1, rMean);
+
+      // Human selfie/portrait check (human faces measure 15-50%+ skin ratio, road surfaces measure < 2%)
+      if (skinRatio > 0.08) {
+        return {
+          isValid: false,
+          category: 'selfie',
+          reason: 'Invalid Image: Selfie or portrait detected. Road inspections require capturing the road surface directly.'
+        };
+      }
+
+      // Warm indoor tungsten/ceiling lighting check
+      if (rMean > 140 && bRRatio < 0.52) {
+        return {
+          isValid: false,
+          category: 'indoor_scene',
+          reason: 'Invalid Image: Indoor scene detected. Please capture the asphalt or concrete road surface directly.'
+        };
+      }
+
+      return { isValid: true, category: null, reason: '' };
+    } catch (e) {
+      return { isValid: true, category: null, reason: '' };
+    }
+  };
 
   // Format timer MM:SS
   const formatTime = (secs) => {
@@ -402,6 +465,15 @@ export default function UserMobileApp({
         const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         setCapturedPreview(dataUrl);
 
+        // Client-side instant pre-validation
+        const validation = analyzeClientImage(canvas);
+        setClientValidation(validation);
+        if (!validation.isValid) {
+          setUploadError(validation.reason);
+        } else {
+          setUploadError(null);
+        }
+
         canvas.toBlob((blob) => {
           if (blob) {
             setCapturedBlob(blob);
@@ -411,7 +483,6 @@ export default function UserMobileApp({
         setPhotoCaptured(true);
         setRecordingSaved(false);
         setUploadSuccessData(null);
-        setUploadError(null);
         stopCamera();
         return;
       } catch (err) {
@@ -440,6 +511,7 @@ export default function UserMobileApp({
     setIsRecording(false);
     setUploadSuccessData(null);
     setUploadError(null);
+    setClientValidation(null);
     startRearCamera();
   };
 
@@ -458,6 +530,7 @@ export default function UserMobileApp({
     setIsRecording(false);
     setUploadSuccessData(null);
     setUploadError(null);
+    setClientValidation(null);
     stopCamera();
     setUserTab('home');
   };
@@ -487,10 +560,27 @@ export default function UserMobileApp({
     });
     setCapturedBlob(file);
     setCapturedPreview(preview);
+
+    if (!isVideo) {
+      const img = new Image();
+      img.onload = () => {
+        const validation = analyzeClientImage(img);
+        setClientValidation(validation);
+        if (!validation.isValid) {
+          setUploadError(validation.reason);
+        } else {
+          setUploadError(null);
+        }
+      };
+      img.src = preview;
+    } else {
+      setClientValidation({ isValid: true, category: null, reason: '' });
+      setUploadError(null);
+    }
+
     setPhotoCaptured(true);
     setRecordingSaved(false);
     setUploadSuccessData(null);
-    setUploadError(null);
     stopCamera();
   };
 
@@ -602,6 +692,10 @@ export default function UserMobileApp({
     setUploadProgress(0);
     setUploadError(null);
     try {
+      if (clientValidation && !clientValidation.isValid) {
+        throw new Error(clientValidation.reason);
+      }
+
       const formData = new FormData();
       let blobToUpload = capturedBlob;
       if (!blobToUpload && capturedPreview) {
@@ -1054,10 +1148,12 @@ export default function UserMobileApp({
                       {observations.filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).slice(0, 3).map((item, i) => {
                         const firstDet = item.detections?.[0] || {};
                         const imgUrl = item.annotated_image_url || item.image_url || '/images/roads/road_pothole_d00.jpg';
-                        const hasNoDamage = item.report_status === 'no_damage_detected' || item.is_hazard === false || (!item.detections?.length && !item.video_url);
                         const isRejected = item.report_status === 'rejected' || item.road_photo_validated === false;
+                        const hasNoDamage = !isRejected && (item.report_status === 'no_damage_detected' || item.is_hazard === false || (!item.detections?.length && !item.video_url));
                         const itemTitle = item.report_title || (
-                          hasNoDamage
+                          isRejected
+                            ? 'Invalid Image (Rejected)'
+                            : hasNoDamage
                             ? 'Road Image - No Damage Detected'
                             : firstDet.class_name
                             ? `${firstDet.class_name} (${firstDet.class_id || 'RDD'})`
@@ -1140,9 +1236,23 @@ export default function UserMobileApp({
                             className="w-full h-full object-cover"
                           />
                         )}
-                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 text-[#145547] text-[10px] font-bold flex items-center space-x-1 shadow-md border border-emerald-200 backdrop-blur z-20">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
-                          <span>{isVideoCaptured ? '🎥 Video Inspection Recorded' : '📸 Photo Captured • Ready to Review'}</span>
+                        <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center space-x-1 shadow-md backdrop-blur z-20 border ${
+                          clientValidation && !clientValidation.isValid
+                            ? 'bg-rose-50/95 text-rose-700 border-rose-300'
+                            : 'bg-white/95 text-[#145547] border-emerald-200'
+                        }`}>
+                          {clientValidation && !clientValidation.isValid ? (
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
+                          )}
+                          <span>
+                            {clientValidation && !clientValidation.isValid
+                              ? (clientValidation.category === 'selfie' ? '❌ Invalid Image • Selfie or Portrait Detected' : '❌ Invalid Image • Non-Road Scene')
+                              : isVideoCaptured
+                              ? '🎥 Video Inspection Recorded'
+                              : '📸 Photo Captured • Ready to Review'}
+                          </span>
                         </div>
                       </>
                     ) : cameraStream ? (
@@ -1267,19 +1377,27 @@ export default function UserMobileApp({
                       {uploadSuccessData ? (
                         <div className="bg-white border border-emerald-200 rounded-2xl p-4 text-center space-y-3 shadow-md">
                           <div className={`inline-flex items-center space-x-1.5 font-bold text-xs px-3 py-1 rounded-full border ${
-                            uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
+                            uploadSuccessData.report_status === 'rejected'
+                              ? 'text-rose-700 bg-rose-50 border-rose-200'
+                              : uploadSuccessData.report_status === 'no_damage_detected'
                               ? 'text-slate-700 bg-slate-100 border-slate-300'
                               : 'text-[#145547] bg-emerald-50 border-emerald-200'
                           }`}>
-                            <CheckCircle2 className={`w-4 h-4 ${
-                              uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
-                                ? 'text-slate-600'
-                                : 'text-[#145547]'
-                            }`} />
+                            {uploadSuccessData.report_status === 'rejected' ? (
+                              <AlertTriangle className="w-4 h-4 text-rose-600" />
+                            ) : (
+                              <CheckCircle2 className={`w-4 h-4 ${
+                                uploadSuccessData.report_status === 'no_damage_detected'
+                                  ? 'text-slate-600'
+                                  : 'text-[#145547]'
+                              }`} />
+                            )}
                             <span>
-                              {uploadSuccessData.inspection_summary
+                              {uploadSuccessData.report_status === 'rejected'
+                                ? '❌ Invalid Image: Rejected'
+                                : uploadSuccessData.inspection_summary
                                 ? '🎥 Video Inspection Analyzed & Logged!'
-                                : uploadSuccessData.report_status === 'no_damage_detected' || uploadSuccessData.is_hazard === false
+                                : uploadSuccessData.report_status === 'no_damage_detected'
                                 ? 'Road Image - No Damage Detected (Clear Roadway)'
                                 : 'Road Hazard Uploaded & Logged!'}
                             </span>
@@ -1465,23 +1583,34 @@ export default function UserMobileApp({
                           )}
 
                           {/* EXPLICIT UPLOAD BUTTON */}
-                          <button
-                            onClick={handleQuickUpload}
-                            disabled={isUploading}
-                            className="w-full py-3 px-4 rounded-xl bg-[#145547] hover:bg-[#0d4339] text-white font-bold text-xs transition-all shadow-md shadow-emerald-950/15 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50 mt-1"
-                          >
-                            {isUploading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                                <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : (isVideoCaptured ? 'Extracting frames & running YOLOv8...' : 'Validating road photo & detecting damage...')}</span>
-                              </>
-                            ) : (
-                              <>
-                                <UploadCloud className="w-4 h-4 text-white" />
-                                <span>{isVideoCaptured ? 'Upload & Run AI Video Inspection' : 'Upload & Log Hazard to JanDrishti'}</span>
-                              </>
-                            )}
-                          </button>
+                          {clientValidation && !clientValidation.isValid ? (
+                            <button
+                              type="button"
+                              onClick={handleRetake}
+                              className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-md flex items-center justify-center space-x-2 active:scale-[0.98] mt-1"
+                            >
+                              <RotateCcw className="w-4 h-4 text-white" />
+                              <span>Retake Photo (Road Surface Required)</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={handleQuickUpload}
+                              disabled={isUploading}
+                              className="w-full py-3 px-4 rounded-xl bg-[#145547] hover:bg-[#0d4339] text-white font-bold text-xs transition-all shadow-md shadow-emerald-950/15 flex items-center justify-center space-x-2 active:scale-[0.98] disabled:opacity-50 mt-1"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                  <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : (isVideoCaptured ? 'Extracting frames & running YOLOv8...' : 'Validating road photo & detecting damage...')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UploadCloud className="w-4 h-4 text-white" />
+                                  <span>{isVideoCaptured ? 'Upload & Run AI Video Inspection' : 'Upload & Log Hazard to JanDrishti'}</span>
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1740,8 +1869,8 @@ export default function UserMobileApp({
                       const isExpanded = expandedReportId === keyId;
                       const imgUrl = resolveImageUrl(r.annotated_image_url || r.image_url);
                       const vidUrl = r.video_url ? resolveImageUrl(r.video_url) : null;
-                      const hasNoDamage = r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url);
                       const isRejected = r.report_status === 'rejected' || r.road_photo_validated === false;
+                      const hasNoDamage = !isRejected && (r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url));
 
                       const itemTitle = r.report_title || (
                         isRejected

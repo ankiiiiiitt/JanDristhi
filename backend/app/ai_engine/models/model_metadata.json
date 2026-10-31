@@ -1,0 +1,49 @@
+{
+  "model_name": "Ridge_Regression",
+  "framework": "scikit-learn",
+  "task": "Pavement Condition Index (PCI) Prediction",
+  "target": "PCI (0 - 100)",
+  "features": {
+    "numerical": [
+      "DMI",
+      "IRI",
+      "Segment_Length_KM"
+    ],
+    "categorical": [
+      "Pave_Type",
+      "FUNC_CLASS"
+    ]
+  },
+  "evaluation_metrics_unseen_test": {
+    "MAE": 0.56,
+    "RMSE": 1.203,
+    "R2_Score": 0.9908
+  },
+  "all_models_evaluated": {
+    "Ridge_Regression": {
+      "MAE": 0.56,
+      "RMSE": 1.203,
+      "R2_Score": 0.9908
+    },
+    "Random_Forest": {
+      "MAE": 0.707,
+      "RMSE": 1.47,
+      "R2_Score": 0.9863
+    },
+    "Gradient_Boosting": {
+      "MAE": 0.678,
+      "RMSE": 1.373,
+      "R2_Score": 0.988
+    }
+  },
+  "training_samples": 1512,
+  "test_samples": 378,
+  "data_provenance": {
+    "source_dataset": "Ontario Provincial Highway Pavement Condition (2023)",
+    "publisher": "Ministry of Transportation, Ontario (Canada)",
+    "source_url": "https://data.ontario.ca/dataset/pavement-condition-for-provincial-highways",
+    "is_chandigarh_local_data": false,
+    "regional_context": "Foreign reference benchmark dataset (Ontario, Canada)",
+    "usage": "Transfer learning prior & engineering regression baseline for road condition index"
+  }
+}

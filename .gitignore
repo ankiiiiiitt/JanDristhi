@@ -45,6 +45,9 @@ yarn-error.log*
 ai-engine/weights/*.pt
 ai-engine/runs/
 !ai-engine/weights/.gitkeep
+!ai-engine/weights/best_road_damage.pt
+!backend/app/ai_engine/weights/best_road_damage.pt
+!backend/app/ai_engine/weights/best.pt
 
 # Environment & Secrets (NEVER COMMIT!)
 .env

@@ -70,3 +70,4 @@ async def get_road_condition_metadata():
         "success": True,
         "data": meta
     }
+

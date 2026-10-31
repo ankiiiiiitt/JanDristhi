@@ -1047,8 +1047,8 @@ export default function MobileAppExperience({
                   <div className="space-y-2.5">
                     {(observations || []).filter(o => o.report_source === 'citizen' || o.vehicle_id?.startsWith('MOB-') || o.vehicle_id?.startsWith('CITIZEN-') || o.video_url || o.video_id).map(r => {
                       const damage = r.detections?.[0] || {};
-                      const hasNoDamage = r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url);
                       const isRejected = r.report_status === 'rejected' || r.road_photo_validated === false;
+                      const hasNoDamage = !isRejected && (r.report_status === 'no_damage_detected' || r.is_hazard === false || (!r.detections?.length && !r.video_url));
                       const title = r.report_title || (
                         isRejected ? 'Invalid Submission' :
                         hasNoDamage ? 'Road Image - No Damage Detected' :

@@ -155,6 +155,21 @@ async def upload_observation(
     performs GPS snapping, and persists the record.
     """
     try:
+        if not isinstance(latitude, (int, float)):
+            latitude = 30.7398
+        if not isinstance(longitude, (int, float)):
+            longitude = 76.7827
+        if not isinstance(report_id, str):
+            report_id = None
+        if not isinstance(captured_at, str):
+            captured_at = None
+        if not isinstance(vehicle_id, str):
+            vehicle_id = "CTU-BUS-104"
+        if not isinstance(sector, str):
+            sector = None
+        if not isinstance(telemetry_z_shock, (int, float)):
+            telemetry_z_shock = 0.0
+
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GPS coordinates are invalid.")
         report_id = (report_id or "").strip() or f"RPT-{uuid.uuid4().hex.upper()}"

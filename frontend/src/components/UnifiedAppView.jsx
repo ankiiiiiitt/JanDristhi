@@ -1248,14 +1248,14 @@ export default function UnifiedAppView({
                 const detection = report.detections?.[0] || {};
                 const isVideo = Boolean(report.video_url || report.video_id);
                 const displayImg = resolveImageUrl(report.annotated_image_url || report.image_url);
-                const hasNoDamage = report.report_status === 'no_damage_detected' || report.is_hazard === false || (!report.detections?.length && !isVideo);
                 const isRejected = report.report_status === 'rejected' || report.road_photo_validated === false;
+                const hasNoDamage = !isRejected && (report.report_status === 'no_damage_detected' || report.is_hazard === false || (!report.detections?.length && !isVideo));
 
                 const reportTitle = report.report_title || (
-                  hasNoDamage
-                    ? 'Road Image - No Damage Detected'
-                    : isRejected
+                  isRejected
                     ? 'Rejected Image'
+                    : hasNoDamage
+                    ? 'Road Image - No Damage Detected'
                     : detection.class_name
                     ? `${detection.class_name} (${detection.class_id || 'RDD'})`
                     : isVideo

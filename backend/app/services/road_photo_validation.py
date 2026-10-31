@@ -124,8 +124,7 @@ def validate_road_video(
         import cv2
         import numpy as np
     except ImportError:
-        # Fallback if cv2 is unavailable
-        return True, "", {"total_frames": 10, "fps": 25.0, "duration_seconds": 1.0}
+        return False, "Video analysis engine is initializing. Please retry in a moment.", {}
 
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():

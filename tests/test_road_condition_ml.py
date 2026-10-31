@@ -177,3 +177,4 @@ def test_pci_bounds_and_input_clamping():
     assert res_clamped["inputs_used"]["dmi_distress"] == 10.0
     assert res_clamped["inputs_used"]["iri_roughness"] == 0.0
     assert res_clamped["inputs_used"]["segment_length_km"] >= 0.05
+

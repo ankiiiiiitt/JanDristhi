@@ -18,16 +18,28 @@ class AIBridge:
 
     def _init_ai(self):
         try:
-            ai_dir = Path(__file__).resolve().parent.parent.parent.parent / "ai-engine"
-            if str(ai_dir) not in sys.path and ai_dir.exists():
-                sys.path.append(str(ai_dir))
+            ai_dirs = [
+                Path(__file__).resolve().parent.parent / "ai_engine",
+                Path(__file__).resolve().parent.parent.parent.parent / "ai-engine",
+                Path("ai-engine"),
+                Path("app/ai_engine")
+            ]
+            for p in ai_dirs:
+                if p.exists() and str(p) not in sys.path:
+                    sys.path.insert(0, str(p))
 
             from detector import RoadDamageDetector
             from image_processor import ImageProcessor
-            model_path = os.environ.get("AI_MODEL_PATH", "ai-engine/weights/best_road_damage.pt")
-            self._ai_detector = RoadDamageDetector(model_path=model_path)
+            model_candidates = [
+                os.environ.get("AI_MODEL_PATH"),
+                str(Path(__file__).resolve().parent.parent / "ai_engine" / "weights" / "best_road_damage.pt"),
+                "ai-engine/weights/best_road_damage.pt",
+                "weights/best_road_damage.pt"
+            ]
+            chosen_model_path = next((p for p in model_candidates if p and Path(p).exists()), "ai-engine/weights/best_road_damage.pt")
+            self._ai_detector = RoadDamageDetector(model_path=chosen_model_path)
             self._image_processor = ImageProcessor()
-            logger.info("Direct AI RoadDamageDetector & ImageProcessor initialized in AIBridge.")
+            logger.info(f"Direct AI RoadDamageDetector initialized with: {chosen_model_path}")
         except Exception as e:
             logger.warning(f"AI engine in-process initialization notice: {e}")
 
