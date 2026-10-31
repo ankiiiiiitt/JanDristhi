@@ -130,63 +130,91 @@ def validate_road_video(
     if not cap.isOpened():
         return False, "The uploaded video could not be decoded by the video engine.", {}
 
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    duration = total_frames / max(1.0, fps)
 
-    if total_frames < 3 or (duration > 0 and duration < 0.2):
-        cap.release()
-        return False, "Video is too short. Please record at least 1-2 seconds of road surface.", {}
-
-    if width < 120 or height < 120:
-        cap.release()
-        return False, "Video resolution is too low for reliable defect detection.", {}
-
-    # Sample up to 6 frames across the timeline to test for authentic road surface
-    step = max(1, total_frames // 6)
-    valid_road_frames = 0
-    sampled = 0
-
-    for idx in range(0, total_frames, step):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+    # Sequential frame extraction (resilient to browser WebM files lacking header cues)
+    frames = []
+    max_read = 60
+    while len(frames) < max_read:
         ret, frame = cap.read()
         if not ret or frame is None:
-            continue
-        sampled += 1
-        fh, fw = frame.shape[:2]
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-        # Focus analysis on the lower 65% driving surface
-        roi_y = int(fh * 0.35)
-        road_roi = gray[roi_y:, :]
-        roi_hsv = hsv[roi_y:, :]
-
-        lap_var = cv2.Laplacian(road_roi, cv2.CV_64F).var()
-        mean_sat = float(np.mean(roi_hsv[:, :, 1]))
-        mean_val = float(np.mean(road_roi))
-
-        # Authentic asphalt criteria:
-        # 1. Texture variance >= 10.0 (excludes pure solid screens and blank slides)
-        # 2. Mean saturation <= 150.0 (excludes hyper-saturated neon cartoons/animations)
-        # 3. Luminance in [20, 220] (excludes pure pitch-black or blown-out white screens)
-        is_road = (lap_var >= 10.0) and (mean_sat <= 150.0) and (20.0 <= mean_val <= 220.0)
-        if is_road:
-            valid_road_frames += 1
+            break
+        frames.append(frame)
 
     cap.release()
 
-    if sampled == 0 or (valid_road_frames / sampled) < 0.4:
-        return False, "Uploaded video could not be validated as road surface inspection footage. Please record the road surface directly.", {}
+    if len(frames) < 3:
+        return False, "Video contains insufficient decodable frames. Please record at least 1-2 seconds of roadway footage.", {}
+
+    fh, fw = frames[0].shape[:2]
+    if fw < 100 or fh < 100:
+        return False, "Video resolution is too low for reliable defect detection.", {}
+
+    # Sample up to 10 frames evenly across the decoded sequence
+    sample_indices = np.linspace(0, len(frames) - 1, min(10, len(frames)), dtype=int)
+    selfie_frames = 0
+    indoor_frames = 0
+    valid_road_frames = 0
+
+    for idx in sample_indices:
+        frame = frames[idx]
+        h, w = frame.shape[:2]
+
+        # 1. Human skin chrominance test
+        ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        skin_ycrcb = cv2.inRange(ycrcb, np.array([0, 133, 77]), np.array([255, 173, 127]))
+        skin_hsv = cv2.inRange(hsv, np.array([0, 25, 45]), np.array([30, 200, 255]))
+        skin_clean = cv2.bitwise_and(skin_ycrcb, skin_hsv)
+        skin_ratio = int(np.count_nonzero(skin_clean)) / float(h * w)
+
+        # 2. Indoor tungsten warmth check
+        roi_y = int(h * 0.35)
+        b_mean = float(np.mean(frame[roi_y:, :, 0]))
+        r_mean = float(np.mean(frame[roi_y:, :, 2]))
+        br_ratio = b_mean / max(1.0, r_mean)
+        is_warm_indoor = (r_mean > 130.0 and br_ratio < 0.58)
+
+        # 3. Road texture
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        road_roi = gray[roi_y:, :]
+        lap_var = cv2.Laplacian(road_roi, cv2.CV_64F).var()
+        mean_sat = float(np.mean(hsv[roi_y:, :, 1]))
+        mean_lum = float(np.mean(road_roi))
+
+        if skin_ratio > 0.08:
+            selfie_frames += 1
+        elif is_warm_indoor:
+            indoor_frames += 1
+        elif lap_var >= 12.0 and mean_sat <= 145.0 and 20.0 <= mean_lum <= 220.0:
+            valid_road_frames += 1
+
+    total_sampled = len(sample_indices)
+
+    if selfie_frames > 0:
+        return False, "Invalid Video: Selfie or portrait detected in video frames. Road inspections require capturing the road surface directly.", {
+            "selfie_frames": selfie_frames,
+            "total_sampled": total_sampled
+        }
+
+    if indoor_frames >= (total_sampled // 2):
+        return False, "Invalid Video: Indoor scene detected in inspection footage. Please record an outdoor roadway.", {
+            "indoor_frames": indoor_frames,
+            "total_sampled": total_sampled
+        }
+
+    if valid_road_frames == 0 or (valid_road_frames / total_sampled) < 0.30:
+        return False, "Invalid Video: Video footage could not be validated as road surface inspection footage. Please record the road surface directly.", {
+            "valid_road_frames": valid_road_frames,
+            "total_sampled": total_sampled
+        }
 
     metadata = {
-        "total_frames": total_frames,
+        "total_frames": len(frames),
         "fps": round(fps, 2),
-        "duration_seconds": round(duration, 2),
-        "width": width,
-        "height": height,
+        "duration_seconds": round(len(frames) / max(1.0, fps), 2),
+        "width": fw,
+        "height": fh,
         "validated_road_frames": valid_road_frames
     }
     return True, "", metadata

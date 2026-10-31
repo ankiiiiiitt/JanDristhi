@@ -574,8 +574,36 @@ export default function UserMobileApp({
       };
       img.src = preview;
     } else {
-      setClientValidation({ isValid: true, category: null, reason: '' });
-      setUploadError(null);
+      const vid = document.createElement('video');
+      vid.preload = 'auto';
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.onloadeddata = () => {
+        vid.currentTime = Math.min(1.0, (vid.duration || 2.0) / 2);
+      };
+      vid.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = vid.videoWidth || 640;
+          canvas.height = vid.videoHeight || 480;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+          const validation = analyzeClientImage(canvas);
+          setClientValidation(validation);
+          if (!validation.isValid) {
+            setUploadError(
+              validation.category === 'selfie'
+                ? 'Invalid Video: Selfie or portrait detected in inspection video. Road inspections require capturing the road surface directly.'
+                : 'Invalid Video: Indoor scene detected. Please record outdoor roadway.'
+            );
+          } else {
+            setUploadError(null);
+          }
+        } catch (e) {
+          console.warn('Video file client check note:', e);
+        }
+      };
+      vid.src = preview;
     }
 
     setPhotoCaptured(true);
@@ -644,11 +672,36 @@ export default function UserMobileApp({
         const finalBlob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
         const videoUrl = URL.createObjectURL(finalBlob);
 
+        // Immediate client-side validation using the live camera frame
+        let clientVal = { isValid: true, category: null, reason: '' };
+        if (userVideoRef.current && (userVideoRef.current.videoWidth > 0 || userVideoRef.current.readyState >= 2)) {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = userVideoRef.current.videoWidth || 640;
+            canvas.height = userVideoRef.current.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(userVideoRef.current, 0, 0, canvas.width, canvas.height);
+            clientVal = analyzeClientImage(canvas);
+          } catch (e) {
+            console.warn('Video frame analyze note:', e);
+          }
+        }
+
         setCapturedBlob(finalBlob);
         setCapturedPreview(videoUrl);
         setIsVideoCaptured(true);
         setRecordingSaved(true);
         setPhotoCaptured(true);
+        setClientValidation(clientVal);
+        if (!clientVal.isValid) {
+          setUploadError(
+            clientVal.category === 'selfie'
+              ? 'Invalid Video: Selfie or portrait detected in inspection video. Road inspections require capturing the road surface directly.'
+              : 'Invalid Video: Indoor scene detected. Please record outdoor roadway.'
+          );
+        } else {
+          setUploadError(null);
+        }
         stopCamera();
 
         const timestamp = new Date().toISOString();
@@ -666,7 +719,6 @@ export default function UserMobileApp({
           status: gpsStatus
         });
         setUploadSuccessData(null);
-        setUploadError(null);
       };
 
       recorder.start(500); // 500ms chunk intervals
@@ -1237,18 +1289,18 @@ export default function UserMobileApp({
                           />
                         )}
                         <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center space-x-1 shadow-md backdrop-blur z-20 border ${
-                          clientValidation && !clientValidation.isValid
+                          (clientValidation && !clientValidation.isValid) || uploadError
                             ? 'bg-rose-50/95 text-rose-700 border-rose-300'
                             : 'bg-white/95 text-[#145547] border-emerald-200'
                         }`}>
-                          {clientValidation && !clientValidation.isValid ? (
+                          {(clientValidation && !clientValidation.isValid) || uploadError ? (
                             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                           ) : (
                             <CheckCircle2 className="w-3.5 h-3.5 text-[#145547]" />
                           )}
                           <span>
-                            {clientValidation && !clientValidation.isValid
-                              ? (clientValidation.category === 'selfie' ? '❌ Invalid Image • Selfie or Portrait Detected' : '❌ Invalid Image • Non-Road Scene')
+                            {(clientValidation && !clientValidation.isValid) || uploadError
+                              ? (isVideoCaptured ? '❌ Invalid Video • Rejected' : '❌ Invalid Image • Rejected')
                               : isVideoCaptured
                               ? '🎥 Video Inspection Recorded'
                               : '📸 Photo Captured • Ready to Review'}
@@ -1484,15 +1536,27 @@ export default function UserMobileApp({
                         </div>
                       ) : (
                         <div className="bg-white border border-emerald-200 rounded-2xl p-3.5 space-y-3 shadow-md">
-                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
-                            <div className="flex items-center space-x-1.5 text-[#145547] font-bold">
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>{isVideoCaptured ? 'Road Inspection Video Ready' : 'Photo Ready to Upload'}</span>
+                          {uploadError || (clientValidation && !clientValidation.isValid) ? (
+                            <div className="flex items-center justify-between text-xs pb-1.5 border-b border-rose-100">
+                              <div className="flex items-center space-x-1.5 text-rose-700 font-bold">
+                                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                                <span>{isVideoCaptured ? 'Video Inspection Rejected' : 'Photo Inspection Rejected'}</span>
+                              </div>
+                              <span className="text-[10px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full font-bold border border-rose-200">
+                                Invalid Footage
+                              </span>
                             </div>
-                            <span className="text-[10px] bg-emerald-50 text-[#145547] px-2 py-0.5 rounded-full font-bold border border-emerald-200">
-                              {isVideoCaptured ? 'OpenCV / YOLO' : 'GPS Tagged'}
-                            </span>
-                          </div>
+                          ) : (
+                            <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+                              <div className="flex items-center space-x-1.5 text-[#145547] font-bold">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>{isVideoCaptured ? 'Road Inspection Video Ready' : 'Photo Ready to Upload'}</span>
+                              </div>
+                              <span className="text-[10px] bg-emerald-50 text-[#145547] px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                                {isVideoCaptured ? 'OpenCV / YOLO' : 'GPS Tagged'}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Preserved Telemetry: Locked GPS & Capture Timestamp */}
                           <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-[11px]">
@@ -1555,7 +1619,7 @@ export default function UserMobileApp({
                             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-center space-y-2 shadow-xs">
                               <div className="inline-flex items-center space-x-1.5 text-rose-700 font-bold text-xs bg-rose-100/80 px-3 py-1 rounded-full border border-rose-200">
                                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                                <span>Invalid Image</span>
+                                <span>{isVideoCaptured ? 'Invalid Video' : 'Invalid Image'}</span>
                               </div>
                               <p className="text-[11px] text-rose-800 font-medium leading-relaxed">
                                 {uploadError}
@@ -1566,7 +1630,7 @@ export default function UserMobileApp({
                                   onClick={handleRetake}
                                   className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"
                                 >
-                                  Retake Road Photo
+                                  {isVideoCaptured ? 'Retake Video' : 'Retake Road Photo'}
                                 </button>
                               </div>
                             </div>
@@ -1583,14 +1647,14 @@ export default function UserMobileApp({
                           )}
 
                           {/* EXPLICIT UPLOAD BUTTON */}
-                          {clientValidation && !clientValidation.isValid ? (
+                          {(clientValidation && !clientValidation.isValid) || uploadError ? (
                             <button
                               type="button"
                               onClick={handleRetake}
                               className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-md flex items-center justify-center space-x-2 active:scale-[0.98] mt-1"
                             >
                               <RotateCcw className="w-4 h-4 text-white" />
-                              <span>Retake Photo (Road Surface Required)</span>
+                              <span>{isVideoCaptured ? 'Retake Video (Road Surface Required)' : 'Retake Photo (Road Surface Required)'}</span>
                             </button>
                           ) : (
                             <button

@@ -2,9 +2,13 @@
 Tests verifying exact user-reported edge cases:
 1. User pothole photo (media_1793400222685_ce9b876c.jpg) MUST be detected as damaged road (D40 pothole), NOT 'No Damage Detected'.
 2. User selfie photo (media_1793403473864_1a276f8b.jpg) MUST be rejected by Stage 1 with HTTP 422, NEVER marked 'No Damage Detected'.
+3. User selfie video MUST be rejected with HTTP 422 ("Invalid Video: Selfie or portrait detected..."), NEVER marked 'Video is too short'.
 """
 
 import pytest
+import tempfile
+import cv2
+import numpy as np
 from pathlib import Path
 from io import BytesIO
 from fastapi.testclient import TestClient
@@ -66,3 +70,35 @@ def test_user_selfie_image_rejected_at_stage1():
     detail = response.json().get("detail", "")
     assert "Invalid Image" in detail
     assert "Selfie" in detail or "portrait" in detail
+
+
+def test_user_selfie_video_rejected_with_accurate_message():
+    """Verify that a selfie video is accurately rejected as a selfie video, and NOT as 'Video is too short'."""
+    with tempfile.NamedTemporaryFile(suffix=".mp4") as tmp_vid:
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(tmp_vid.name, fourcc, 10.0, (320, 240))
+        # 12 frames of selfie (over 1 second of footage)
+        for _ in range(12):
+            frame = np.zeros((240, 320, 3), dtype=np.uint8)
+            frame[:] = (180, 180, 180)
+            cv2.ellipse(frame, (160, 120), (60, 80), 0, 0, 360, (125, 160, 225), -1)
+            out.write(frame)
+        out.release()
+
+        vid_bytes = Path(tmp_vid.name).read_bytes()
+
+    response = client.post(
+        "/api/v1/observations/upload",
+        files={"file": ("inspection_video.mp4", vid_bytes, "video/mp4")},
+        data={
+            "vehicle_id": "MOB-TEST",
+            "latitude": "30.7398",
+            "longitude": "76.7827",
+            "sector": "Sector 17"
+        }
+    )
+    assert response.status_code == 422
+    detail = response.json().get("detail", "")
+    assert "Invalid Video" in detail
+    assert "Selfie" in detail or "portrait" in detail
+    assert "Video is too short" not in detail
